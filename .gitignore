@@ -23,3 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 contex_file
+contex_file/test_key.md
+.env
+.env.local
+backend/.env
+frontend/.env
