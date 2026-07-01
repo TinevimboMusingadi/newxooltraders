@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: newxooltraders-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: DERIV_APP_ID
+        sync: false
+      - key: DERIV_CLIENT_ID
+        sync: false
+      - key: DERIV_CLIENT_SECRET
+        sync: false
+      - key: DERIV_REDIRECT_URI
+        sync: false
+      - key: AFFILIATE_UTM_SOURCE
+        sync: false
+      - key: AFFILIATE_UTM_CAMPAIGN
+        sync: false
+      - key: AFFILIATE_SIDC
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
