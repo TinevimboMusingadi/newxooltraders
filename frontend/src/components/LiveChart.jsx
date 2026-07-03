@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { createChart, CrosshairMode, CandlestickSeries } from 'lightweight-charts';
 
-export default function LiveChart({ symbol, onPriceUpdate }) {
+export default function LiveChart({ symbol, onPriceUpdate, height = 360 }) {
   const containerRef = useRef(null);
   const chartRef = useRef(null);
   const seriesRef = useRef(null);
@@ -24,7 +24,7 @@ export default function LiveChart({ symbol, onPriceUpdate }) {
       rightPriceScale: { borderColor: 'rgba(255,255,255,0.08)' },
       timeScale: { borderColor: 'rgba(255,255,255,0.08)' },
       width: containerRef.current.clientWidth,
-      height: 360,
+      height,
     });
 
     const series = chart.addSeries(CandlestickSeries, {
@@ -138,7 +138,7 @@ export default function LiveChart({ symbol, onPriceUpdate }) {
       clearInterval(ping);
       ws.close();
     };
-  }, [symbol, onPriceUpdate]);
+  }, [symbol, onPriceUpdate, height]);
 
   return (
     <div className="live-chart-wrap">
