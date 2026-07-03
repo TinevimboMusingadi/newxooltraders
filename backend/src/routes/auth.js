@@ -10,7 +10,7 @@ import { generateCodeChallenge, generateCodeVerifier, generateState } from '../s
 const router = Router();
 
 const OAUTH_NOT_CONFIGURED =
-  'OAuth not configured. Create a Web-based app at developers.deriv.com, then set DERIV_CLIENT_ID and DERIV_CLIENT_SECRET in backend/.env';
+  'OAuth not configured. Create a Web-based app at developers.deriv.com, then set DERIV_APP_ID and DERIV_CLIENT_ID in backend env';
 
 async function applyTokenSession(req, accessToken, { refreshToken, expiresIn } = {}) {
   let accounts = [];
@@ -52,7 +52,7 @@ async function applyTokenSession(req, accessToken, { refreshToken, expiresIn } =
 }
 
 function startOAuth(req, res, register = false) {
-  if (!config.deriv.clientId || !config.deriv.clientSecret) {
+  if (!config.deriv.clientId) {
     return res.redirect(`${config.frontendUrl}/?error=${encodeURIComponent(OAUTH_NOT_CONFIGURED)}`);
   }
 
