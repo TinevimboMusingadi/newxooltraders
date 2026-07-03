@@ -12,11 +12,14 @@ export async function exchangeCodeForTokens(code, codeVerifier) {
   const body = new URLSearchParams({
     grant_type: 'authorization_code',
     client_id: config.deriv.clientId,
-    client_secret: config.deriv.clientSecret,
     code,
     redirect_uri: config.deriv.redirectUri,
     code_verifier: codeVerifier,
   });
+
+  if (config.deriv.clientSecret) {
+    body.set('client_secret', config.deriv.clientSecret);
+  }
 
   const res = await fetch(config.deriv.tokenUrl, {
     method: 'POST',
@@ -35,9 +38,12 @@ export async function refreshAccessToken(refreshToken) {
   const body = new URLSearchParams({
     grant_type: 'refresh_token',
     client_id: config.deriv.clientId,
-    client_secret: config.deriv.clientSecret,
     refresh_token: refreshToken,
   });
+
+  if (config.deriv.clientSecret) {
+    body.set('client_secret', config.deriv.clientSecret);
+  }
 
   const res = await fetch(config.deriv.tokenUrl, {
     method: 'POST',
