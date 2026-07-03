@@ -64,7 +64,7 @@ export default function Trade() {
           )}
           {!accountId && !accountError && (
             <div className="auth-error-banner" style={{ borderColor: 'var(--purple-main)', color: 'var(--purple-light)' }}>
-              No Deriv account linked. Set <code>DERIV_APP_ID</code> in backend/.env and use Dev Login (PAT) or OAuth. Chart below still works.
+              No Deriv account linked yet. Try logging out and signing in again, or create a demo account on Deriv first.
             </div>
           )}
 
