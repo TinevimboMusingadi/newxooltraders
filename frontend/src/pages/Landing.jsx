@@ -1,36 +1,27 @@
 import React, { useEffect } from 'react';
-import { ArrowRight } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import asset1 from '../assets/asset1.svg';
 import asset2 from '../assets/asset2.svg';
 import asset3 from '../assets/asset3.svg';
 import CandlestickChart from '../CandlestickChart';
+import LiveChart from '../components/LiveChart';
+import LiveTicker from '../components/LiveTicker';
 import Navbar from '../components/Navbar';
 import SetupBanner from '../components/SetupBanner';
-import { authUrls } from '../lib/api';
+import AuthCTA from '../components/AuthCTA';
 import { useAuth } from '../hooks/useAuth';
-import { useSetupStatus } from '../hooks/useSetupStatus';
-
-const tickerItems = [
-  { symbol: 'Volatility 100', price: 'Live', change: 'Deriv', up: true },
-  { symbol: 'Volatility 75', price: 'Live', change: 'Deriv', up: true },
-  { symbol: 'EUR/USD', price: 'Live', change: 'Deriv', up: true },
-  { symbol: 'BTC/USD', price: 'Live', change: 'Deriv', up: true },
-];
+import { getFriendlyAuthError } from '../lib/authErrors';
+import { Link } from 'react-router-dom';
 
 export default function Landing() {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const { setup } = useSetupStatus();
-  const authError = searchParams.get('error');
-  const oauthReady = setup?.oauthReady ?? false;
-  const patReady = setup?.patReady ?? false;
+  const authError = getFriendlyAuthError(searchParams.get('error'));
 
   useEffect(() => {
-    if (authError) {
-      console.error('Auth error:', authError);
-    }
-  }, [authError]);
+    const raw = searchParams.get('error');
+    if (raw && import.meta.env.DEV) console.error('Auth error:', raw);
+  }, [searchParams]);
 
   return (
     <>
@@ -40,7 +31,7 @@ export default function Landing() {
 
       {authError && (
         <div className="auth-error-banner">
-          Sign in failed: {authError}. Please try again.
+          {authError}
         </div>
       )}
 
@@ -55,50 +46,12 @@ export default function Landing() {
             <p className="text-lead" style={{ color: '#ffffff' }}>
               Experience the ultimate trading platform with ultra-low latency, institutional-grade security, and access to global markets. Trade forex, crypto, synthetics, and more with Newxool Traders.
             </p>
-            <div className="hero-actions">
-              {user?.authenticated ? (
-                <Link to="/trade" className="btn btn-primary">
-                  Open Trader <ArrowRight size={18} style={{ marginLeft: '8px' }} />
-                </Link>
-              ) : (
-                <>
-                  {oauthReady ? (
-                    <>
-                      <a href={authUrls.register} className="btn btn-primary">
-                        Start Trading Now <ArrowRight size={18} style={{ marginLeft: '8px' }} />
-                      </a>
-                      <a href={authUrls.login} className="btn btn-secondary">
-                        Try Free Demo
-                      </a>
-                    </>
-                  ) : (
-                    <span className="text-secondary" style={{ fontSize: '0.9rem' }}>
-                      OAuth buttons unlock after you set credentials in backend/.env
-                    </span>
-                  )}
-                  {import.meta.env.DEV && patReady && (
-                    <a href={`${import.meta.env.VITE_API_URL || ''}/auth/dev-login`} className="btn btn-secondary" style={{ opacity: 0.85 }}>
-                      Dev Login (PAT)
-                    </a>
-                  )}
-                </>
-              )}
-            </div>
+            <AuthCTA variant="hero" />
           </div>
         </div>
       </section>
 
-      <div className="ticker-wrapper">
-        <div className="ticker-content">
-          {[...tickerItems, ...tickerItems].map((item, index) => (
-            <div className="ticker-item" key={index}>
-              <span className="ticker-symbol">{item.symbol}</span>
-              <span className="ticker-price">{item.price}</span>
-              <span className={`ticker-change ${item.up ? 'up' : 'down'}`}>▲ {item.change}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      <LiveTicker />
 
       <section id="features" className="section">
         <div className="dark-energy-bg"></div>
@@ -140,8 +93,8 @@ export default function Landing() {
 
             <div className="bento-item bento-span-8">
               <div className="bento-item-bg"></div>
-              <div style={{ marginBottom: '20px' }}>
-                <CandlestickChart height="150px" numCandles={20} />
+              <div className="live-chart-compact" style={{ marginBottom: '20px' }}>
+                <LiveChart symbol="1HZ100V" height={150} />
               </div>
               <h3 className="heading-md">Advanced Analytics</h3>
               <p className="text-secondary">
@@ -187,17 +140,7 @@ export default function Landing() {
             <p className="text-lead" style={{ marginBottom: '32px' }}>
               Join thousands of traders who have already made the switch. Deposits are handled securely on Deriv — we never hold your funds.
             </p>
-            <div className="hero-actions" style={{ marginTop: 0 }}>
-              {oauthReady ? (
-                <a href={authUrls.register} className="btn btn-primary" style={{ padding: '16px 32px', fontSize: '1.1rem' }}>
-                  Create Free Account
-                </a>
-              ) : (
-                <p className="text-muted" style={{ fontSize: '0.9rem' }}>
-                  Complete Deriv Web-based app setup in backend/.env to enable registration.
-                </p>
-              )}
-            </div>
+            <AuthCTA variant="footer" layout="stack" />
             <p className="text-muted" style={{ marginTop: '16px', fontSize: '0.85rem' }}>
               <a href="https://deriv.com" target="_blank" rel="noopener noreferrer">Deposit on Deriv</a> using EcoCash, cards, crypto, and more.
             </p>
@@ -207,6 +150,24 @@ export default function Landing() {
 
       <footer className="footer">
         <div className="container">
+          <div className="footer-grid">
+            <div className="footer-brand">
+              <p>Redefining the trading experience with cutting-edge technology and institutional-level access.</p>
+            </div>
+            <div className="footer-links">
+              <h4>Platform</h4>
+              <ul>
+                <li>
+                  {user?.authenticated ? (
+                    <Link to="/trade">Web Trader</Link>
+                  ) : (
+                    <Link to="/login">Web Trader</Link>
+                  )}
+                </li>
+                <li><Link to="/login">Log In</Link></li>
+              </ul>
+            </div>
+          </div>
           <div className="footer-bottom">
             <p>&copy; {new Date().getFullYear()} Newxool Traders. All rights reserved.</p>
             <p>Powered by Deriv API</p>
