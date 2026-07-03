@@ -191,10 +191,15 @@ button {
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   padding: 20px 0;
   z-index: 1000;
-  transition: background var(--transition-normal), padding var(--transition-normal);
+  transition: background var(--transition-normal), padding var(--transition-normal), box-shadow var(--transition-normal);
   backdrop-filter: blur(12px);
-  background: rgba(5, 5, 5, 0.7);
-  border-bottom: 1px solid var(--border-subtle);
+  background: linear-gradient(
+    180deg,
+    rgba(107, 51, 238, 0.14) 0%,
+    rgba(5, 5, 5, 0.78) 100%
+  );
+  border-bottom: 1px solid rgba(157, 108, 255, 0.2);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
 }
 
 .navbar .container {
@@ -278,6 +283,120 @@ button {
   justify-content: center;
   gap: 16px;
   margin-top: 40px;
+}
+
+.auth-cta {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 40px;
+}
+
+.auth-cta-stack {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.auth-cta-row {
+  flex-direction: row;
+}
+
+.auth-cta-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.auth-cta-dev-link {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-decoration: underline;
+  width: 100%;
+  text-align: center;
+  margin-top: 4px;
+}
+
+.auth-cta-hint {
+  font-size: 0.85rem;
+  width: 100%;
+  text-align: center;
+}
+
+.nav-links .auth-cta {
+  margin-top: 0;
+  gap: 12px;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+
+.nav-links .auth-cta-dev-link {
+  width: auto;
+  margin-top: 0;
+}
+
+.nav-account-badge {
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(107, 51, 238, 0.2);
+  border: 1px solid var(--purple-main);
+  color: var(--purple-light);
+}
+
+.navbar.scrolled {
+  top: 0;
+  width: 100%;
+  max-width: none;
+  border-radius: 0;
+  padding: 14px 0;
+  background: linear-gradient(
+    180deg,
+    rgba(107, 51, 238, 0.22) 0%,
+    rgba(5, 5, 5, 0.92) 55%
+  );
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(157, 108, 255, 0.15);
+}
+
+.mobile-menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+}
+
+.login-page {
+  min-height: 100vh;
+  padding: 120px 0 60px;
+  display: flex;
+  align-items: center;
+}
+
+.login-card {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 40px;
+}
+
+.login-cta {
+  margin-top: 28px;
+}
+
+.login-footer-note {
+  margin-top: 20px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.live-chart-compact .live-chart {
+  min-height: 150px;
+}
+
+.setup-banner-prod {
+  border-color: var(--border-subtle);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 /* --- Ticker --- */
@@ -539,8 +658,35 @@ button {
   .footer-grid {
     grid-template-columns: 1fr;
   }
+  .mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
   .nav-links {
     display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px 24px;
+    background: linear-gradient(
+      180deg,
+      rgba(107, 51, 238, 0.28) 0%,
+      rgba(5, 5, 5, 0.97) 45%
+    );
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(157, 108, 255, 0.25);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  }
+  .nav-links.nav-links-open {
+    display: flex;
+  }
+  .navbar .container {
+    position: relative;
   }
 }
 
