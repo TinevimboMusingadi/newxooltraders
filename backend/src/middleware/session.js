@@ -13,7 +13,7 @@ export function createSessionMiddleware() {
     cookie: {
       httpOnly: true,
       secure: config.nodeEnv === 'production',
-      sameSite: config.nodeEnv === 'production' ? 'none' : 'lax',
+      sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     },
   };
