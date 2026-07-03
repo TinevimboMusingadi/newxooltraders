@@ -48,10 +48,11 @@ export function useDerivTradingWs(accountId) {
           setConnected(true);
           setError(null);
           ws.send(JSON.stringify({ balance: 1, subscribe: 1, req_id: reqIdRef.current++ }));
-          ws.send(JSON.stringify({ portfolio: 1, subscribe: 1, req_id: reqIdRef.current++ }));
+          ws.send(JSON.stringify({ portfolio: 1, req_id: reqIdRef.current++ }));
           pingTimer = setInterval(() => {
             if (ws.readyState === WebSocket.OPEN) {
               ws.send(JSON.stringify({ ping: 1, req_id: reqIdRef.current++ }));
+              ws.send(JSON.stringify({ portfolio: 1, req_id: reqIdRef.current++ }));
             }
           }, PING_INTERVAL_MS);
         };
@@ -64,8 +65,9 @@ export function useDerivTradingWs(accountId) {
             if (reqId && pendingRef.current.has(reqId)) {
               pendingRef.current.get(reqId).reject(new Error(data.error.message));
               pendingRef.current.delete(reqId);
+            } else {
+              setError(data.error.message);
             }
-            setError(data.error.message);
             return;
           }
 
@@ -126,7 +128,6 @@ export function useDerivTradingWs(accountId) {
         duration,
         duration_unit: durationUnit,
         symbol,
-        subscribe: 0,
       });
     },
     [send],
@@ -137,11 +138,7 @@ export function useDerivTradingWs(accountId) {
       const result = await send({ buy: proposalId, price });
       const contractId = result.buy?.contract_id;
       if (contractId) {
-        send({
-          proposal_open_contract: 1,
-          contract_id: contractId,
-          subscribe: 1,
-        }).catch(() => {});
+        send({ portfolio: 1 }).catch(() => {});
       }
       return result;
     },
