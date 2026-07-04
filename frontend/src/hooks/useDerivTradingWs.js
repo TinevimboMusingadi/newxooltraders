@@ -152,6 +152,29 @@ export function useDerivTradingWs(accountId) {
     [send],
   );
 
+  const sellContract = useCallback(
+    async (contractId, price = 0) => {
+      const result = await send({ sell: contractId, price });
+      send({ portfolio: 1 }).catch(() => {});
+      return result;
+    },
+    [send],
+  );
+
+  const updateContract = useCallback(
+    async (contractId, limitOrder) => {
+      return send({ contract_update: 1, contract_id: contractId, limit_order: limitOrder });
+    },
+    [send],
+  );
+
+  const subscribeOpenContract = useCallback(
+    (contractId) => {
+      return send({ proposal_open_contract: 1, contract_id: contractId, subscribe: 1 });
+    },
+    [send],
+  );
+
   const queueBulkTrades = useCallback(
     async (trades, { delayMs = 800, maxConcurrent = 3 } = {}) => {
       const results = [];
@@ -183,6 +206,9 @@ export function useDerivTradingWs(accountId) {
     error,
     getProposal,
     buyContract,
+    sellContract,
+    updateContract,
+    subscribeOpenContract,
     queueBulkTrades,
   };
 }
