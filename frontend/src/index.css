@@ -244,10 +244,7 @@ button {
   max-width: 1400px;
   margin: 16px auto;
   border-radius: var(--radius-lg);
-  background-image: 
-    radial-gradient(ellipse at 20% 50%, rgba(107, 51, 238, 0.15) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(157, 108, 255, 0.1) 0%, transparent 40%),
-    radial-gradient(ellipse at 60% 80%, rgba(59, 130, 246, 0.08) 0%, transparent 50%);
+  background-image: url('./assets/bgoverlay.svg');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -460,7 +457,7 @@ button {
   left: 50%;
   width: 40%;
   aspect-ratio: 1 / 1;
-  background-image: radial-gradient(circle, rgba(107, 51, 238, 0.3) 0%, transparent 70%);
+  background-image: url('./assets/asset3.svg');
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
