@@ -119,14 +119,26 @@ export function useDerivTradingWs(accountId) {
   }, [accountId]);
 
   const getProposal = useCallback(
-    async ({ contractType, amount, duration, durationUnit, symbol, currency, barrier, growthRate, limitTicks }) => {
+    async ({
+      contractType,
+      amount,
+      duration,
+      durationUnit,
+      symbol,
+      currency,
+      barrier,
+      growthRate,
+      limitTicks,
+      multiplier,
+      limitOrder,
+    }) => {
       const payload = {
         proposal: 1,
         amount,
         basis: 'stake',
         contract_type: contractType,
         currency,
-        symbol,
+        underlying_symbol: symbol,
       };
       if (duration != null) {
         payload.duration = duration;
@@ -134,8 +146,17 @@ export function useDerivTradingWs(accountId) {
       }
       if (barrier != null) payload.barrier = String(barrier);
       if (growthRate != null) payload.growth_rate = growthRate;
-      if (limitTicks != null) payload.limit_order = { take_profit: limitTicks };
+      if (multiplier != null) payload.multiplier = multiplier;
+      if (limitOrder != null) payload.limit_order = limitOrder;
+      else if (limitTicks != null) payload.limit_order = { take_profit: limitTicks };
       return send(payload);
+    },
+    [send],
+  );
+
+  const subscribeOpenContract = useCallback(
+    (contractId) => {
+      return send({ proposal_open_contract: 1, contract_id: contractId, subscribe: 1 });
     },
     [send],
   );
@@ -146,10 +167,11 @@ export function useDerivTradingWs(accountId) {
       const contractId = result.buy?.contract_id;
       if (contractId) {
         send({ portfolio: 1 }).catch(() => {});
+        subscribeOpenContract(contractId).catch(() => {});
       }
       return result;
     },
-    [send],
+    [send, subscribeOpenContract],
   );
 
   const sellContract = useCallback(
@@ -164,13 +186,6 @@ export function useDerivTradingWs(accountId) {
   const updateContract = useCallback(
     async (contractId, limitOrder) => {
       return send({ contract_update: 1, contract_id: contractId, limit_order: limitOrder });
-    },
-    [send],
-  );
-
-  const subscribeOpenContract = useCallback(
-    (contractId) => {
-      return send({ proposal_open_contract: 1, contract_id: contractId, subscribe: 1 });
     },
     [send],
   );
