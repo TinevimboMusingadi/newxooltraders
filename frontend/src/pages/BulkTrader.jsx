@@ -4,7 +4,7 @@ import DigitHeatmap from '../components/DigitHeatmap';
 import RealTradeConfirmModal from '../components/RealTradeConfirmModal';
 import { useAuth } from '../hooks/useAuth';
 import { useMarket } from '../context/MarketContext';
-import { useDerivTradingWs } from '../hooks/useDerivTradingWs';
+import { useTradingWs } from '../context/TradingWsContext';
 import { computeDigitDistribution, fetchTickHistory } from '../lib/digitsEngine';
 import {
   hasRealTradeConfirmation,
@@ -38,7 +38,7 @@ export default function BulkTrader() {
   const [running, setRunning] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const { connected, queueBulkTrades } = useDerivTradingWs(accountId);
+  const { connected, queueBulkTrades } = useTradingWs();
 
   const loadDigits = async () => {
     const quotes = await fetchTickHistory(symbol, 1000);
