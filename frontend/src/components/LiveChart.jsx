@@ -1,12 +1,19 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createChart, CrosshairMode, CandlestickSeries } from 'lightweight-charts';
+import { GRANULARITIES, DEFAULT_GRANULARITY } from '../lib/chartUtils';
+import { useTheme } from '../context/ThemeContext';
 
-export default function LiveChart({ symbol, onPriceUpdate, height = 360 }) {
+export default function LiveChart({ symbol, onPriceUpdate, height = 380 }) {
   const containerRef = useRef(null);
   const chartRef = useRef(null);
   const seriesRef = useRef(null);
   const lastCandleRef = useRef(null);
   const wsRef = useRef(null);
+  const [granularity, setGranularity] = useState(DEFAULT_GRANULARITY);
+  const [loading, setLoading] = useState(true);
+  const { theme } = useTheme();
+
+  const isDark = theme === 'dark';
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -14,26 +21,26 @@ export default function LiveChart({ symbol, onPriceUpdate, height = 360 }) {
     const chart = createChart(containerRef.current, {
       layout: {
         background: { color: 'transparent' },
-        textColor: '#a0a0ab',
+        textColor: isDark ? '#a0a0ab' : '#555',
       },
       grid: {
-        vertLines: { color: 'rgba(255,255,255,0.04)' },
-        horzLines: { color: 'rgba(255,255,255,0.04)' },
+        vertLines: { color: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)' },
+        horzLines: { color: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)' },
       },
       crosshair: { mode: CrosshairMode.Normal },
-      rightPriceScale: { borderColor: 'rgba(255,255,255,0.08)' },
-      timeScale: { borderColor: 'rgba(255,255,255,0.08)' },
+      rightPriceScale: { borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)' },
+      timeScale: { borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)', timeVisible: true },
       width: containerRef.current.clientWidth,
       height,
     });
 
     const series = chart.addSeries(CandlestickSeries, {
-      upColor: '#6b33ee',
-      downColor: '#ff3d00',
-      borderUpColor: '#9d6cff',
-      borderDownColor: '#ff3d00',
-      wickUpColor: '#9d6cff',
-      wickDownColor: '#ff3d00',
+      upColor: '#22c55e',
+      downColor: '#ef4444',
+      borderUpColor: '#22c55e',
+      borderDownColor: '#ef4444',
+      wickUpColor: '#22c55e',
+      wickDownColor: '#ef4444',
     });
 
     chartRef.current = chart;
@@ -50,23 +57,27 @@ export default function LiveChart({ symbol, onPriceUpdate, height = 360 }) {
       window.removeEventListener('resize', handleResize);
       chart.remove();
     };
-  }, []);
+  }, [isDark]);
 
   useEffect(() => {
     if (!symbol || !seriesRef.current) return;
+    setLoading(true);
+    seriesRef.current.setData([]);
+    lastCandleRef.current = null;
 
     const ws = new WebSocket('wss://api.derivws.com/trading/v1/options/ws/public');
     wsRef.current = ws;
     let reqId = 1;
+    const gran = granularity.value;
 
     ws.onopen = () => {
       ws.send(
         JSON.stringify({
           ticks_history: symbol,
           adjust_start_time: 1,
-          count: 200,
+          count: 300,
           end: 'latest',
-          granularity: 60,
+          granularity: gran,
           style: 'candles',
           req_id: reqId++,
         }),
@@ -80,25 +91,26 @@ export default function LiveChart({ symbol, onPriceUpdate, height = 360 }) {
       if (data.msg_type === 'candles' && data.candles?.length) {
         const candles = data.candles.map((c) => ({
           time: c.epoch,
-          open: c.open,
-          high: c.high,
-          low: c.low,
-          close: c.close,
+          open: Number(c.open),
+          high: Number(c.high),
+          low: Number(c.low),
+          close: Number(c.close),
         }));
         seriesRef.current.setData(candles);
         lastCandleRef.current = candles[candles.length - 1];
+        setLoading(false);
       }
 
       if (data.msg_type === 'tick' && data.tick) {
-        const quote = data.tick.quote;
+        const quote = Number(data.tick.quote);
         onPriceUpdate?.(quote);
 
         const epoch = data.tick.epoch;
-        const minute = Math.floor(epoch / 60) * 60;
+        const bucket = Math.floor(epoch / gran) * gran;
         const last = lastCandleRef.current;
 
-        if (!last || last.time !== minute) {
-          const newCandle = { time: minute, open: quote, high: quote, low: quote, close: quote };
+        if (!last || last.time !== bucket) {
+          const newCandle = { time: bucket, open: quote, high: quote, low: quote, close: quote };
           lastCandleRef.current = newCandle;
           seriesRef.current.update(newCandle);
         } else {
@@ -117,16 +129,18 @@ export default function LiveChart({ symbol, onPriceUpdate, height = 360 }) {
         const c = data.ohlc;
         const candle = {
           time: c.open_time || c.epoch,
-          open: c.open,
-          high: c.high,
-          low: c.low,
-          close: c.close,
+          open: Number(c.open),
+          high: Number(c.high),
+          low: Number(c.low),
+          close: Number(c.close),
         };
         lastCandleRef.current = candle;
         seriesRef.current.update(candle);
-        onPriceUpdate?.(c.close);
+        onPriceUpdate?.(Number(c.close));
       }
     };
+
+    ws.onerror = () => setLoading(false);
 
     const ping = setInterval(() => {
       if (ws.readyState === WebSocket.OPEN) {
@@ -136,13 +150,35 @@ export default function LiveChart({ symbol, onPriceUpdate, height = 360 }) {
 
     return () => {
       clearInterval(ping);
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ forget_all: 'ticks' }));
+      }
       ws.close();
     };
-  }, [symbol, onPriceUpdate, height]);
+  }, [symbol, granularity, onPriceUpdate]);
 
   return (
     <div className="live-chart-wrap">
-      <div ref={containerRef} className="live-chart" />
+      <div className="chart-toolbar">
+        {GRANULARITIES.map((g) => (
+          <button
+            key={g.label}
+            type="button"
+            className={`tf-btn ${granularity.value === g.value ? 'active' : ''}`}
+            onClick={() => setGranularity(g)}
+          >
+            {g.label}
+          </button>
+        ))}
+      </div>
+      <div className="chart-container" style={{ position: 'relative' }}>
+        {loading && (
+          <div className="chart-loading">
+            <div className="spinner" />
+          </div>
+        )}
+        <div ref={containerRef} className="live-chart" />
+      </div>
     </div>
   );
 }
