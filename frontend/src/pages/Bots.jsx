@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
 import { useMarket } from '../context/MarketContext';
-import { useDerivTradingWs } from '../hooks/useDerivTradingWs';
+import { useTradingWs } from '../context/TradingWsContext';
 import { createStrategyRunner, BOT_PRESETS } from '../lib/strategyRunner';
 import { DEFAULT_DURATION } from '../lib/tradeDurations';
 
@@ -10,7 +10,7 @@ export default function Bots() {
   const { user } = useAuth();
   const { selectedSymbol } = useMarket();
   const accountId = user?.selectedAccountId;
-  const { connected, getProposal, buyContract } = useDerivTradingWs(accountId);
+  const { connected, getProposal, buyContract } = useTradingWs();
 
   const [config, setConfig] = useState(BOT_PRESETS[0].config);
   const [name, setName] = useState('My bot');
