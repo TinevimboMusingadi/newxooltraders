@@ -71,18 +71,43 @@ router.post('/trade', (req, res) => {
     (s) => s.providerCode === provider.code && s.active,
   );
 
+  const masterAmount = Number(payload.amount) || 1;
+
   for (const f of followers) {
+    const scaledAmount = Math.max(0.35, (masterAmount * f.riskPct) / 100);
     copyJobs.push({
       id: randomBytes(4).toString('hex'),
       followerAccountId: f.followerAccountId,
+      followerKey: f.followerKey,
       riskPct: f.riskPct,
-      trade: payload,
+      trade: { ...payload, amount: scaledAmount },
       status: 'queued',
       createdAt: new Date().toISOString(),
     });
   }
 
   res.json({ queued: followers.length, jobs: copyJobs.slice(-followers.length) });
+});
+
+router.get('/jobs/pending', (req, res) => {
+  const accountId = req.session.selectedAccountId;
+  const key = sessionKey(req);
+  const pending = copyJobs.filter(
+    (j) => j.status === 'queued' && j.followerAccountId === accountId && j.followerKey === key,
+  );
+  res.json({ jobs: pending });
+});
+
+router.post('/jobs/:id/complete', (req, res) => {
+  const job = copyJobs.find((j) => j.id === req.params.id);
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+  if (job.followerKey !== sessionKey(req)) {
+    return res.status(403).json({ error: 'Not your job' });
+  }
+  job.status = req.body.error ? 'failed' : 'done';
+  job.completedAt = new Date().toISOString();
+  job.result = req.body;
+  res.json({ ok: true, job });
 });
 
 router.get('/jobs', (req, res) => {
