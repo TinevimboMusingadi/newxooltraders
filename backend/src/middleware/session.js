@@ -1,6 +1,6 @@
 import session from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
-import RedisStore from 'connect-redis';
+import { RedisStore } from 'connect-redis';
 import pg from 'pg';
 import { config } from '../config.js';
 import { redis } from '../lib/redis.js';
