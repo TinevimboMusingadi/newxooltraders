@@ -52,6 +52,7 @@ export function useDerivTradingWs(accountId) {
           pingTimer = setInterval(() => {
             if (ws.readyState === WebSocket.OPEN) {
               ws.send(JSON.stringify({ ping: 1, req_id: reqIdRef.current++ }));
+              ws.send(JSON.stringify({ balance: 1, req_id: reqIdRef.current++ }));
               ws.send(JSON.stringify({ portfolio: 1, req_id: reqIdRef.current++ }));
             }
           }, PING_INTERVAL_MS);
