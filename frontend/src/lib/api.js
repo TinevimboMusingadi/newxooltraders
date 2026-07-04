@@ -60,6 +60,24 @@ export const api = {
       body: JSON.stringify(result),
     }),
   getCopyJobs: () => request('/api/copy/jobs'),
+  getProfitTable: ({ from, to, limit, offset } = {}) => {
+    const params = new URLSearchParams();
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    if (limit) params.set('limit', limit);
+    if (offset) params.set('offset', offset);
+    return request(`/api/history/profit-table?${params}`);
+  },
+  getStatement: ({ from, to, actionType, limit } = {}) => {
+    const params = new URLSearchParams();
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    if (actionType) params.set('action_type', actionType);
+    if (limit) params.set('limit', limit);
+    return request(`/api/history/statement?${params}`);
+  },
+  getContractsFor: (symbol) => request(`/api/markets/contracts/${symbol}`),
+  getLiveSymbols: () => request('/api/markets/symbols/live'),
 };
 
 export const authUrls = {
