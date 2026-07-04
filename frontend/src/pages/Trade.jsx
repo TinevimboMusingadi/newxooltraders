@@ -4,7 +4,8 @@ import LiveChart from '../components/LiveChart';
 import TradePanel from '../components/TradePanel';
 import { useAuth } from '../hooks/useAuth';
 import { useMarket } from '../context/MarketContext';
-import { useDerivTradingWs } from '../hooks/useDerivTradingWs';
+import { useTradingWs } from '../context/TradingWsContext';
+import { api } from '../lib/api';
 import {
   getAccountDisplayId,
   getAccountMode,
@@ -24,7 +25,7 @@ export default function Trade() {
   const [pendingTrade, setPendingTrade] = useState(null);
 
   const { connected, balance, openContracts, error, getProposal, buyContract } =
-    useDerivTradingWs(accountId);
+    useTradingWs();
 
   const executeTrade = useCallback(
     async (params) => {
@@ -37,6 +38,14 @@ export default function Trade() {
           throw new Error('No proposal received');
         }
         const result = await buyContract(String(proposalId), askPrice);
+        try {
+          await api.reportCopyTrade({
+            ...params,
+            contractId: result.buy?.contract_id,
+          });
+        } catch {
+          /* not a provider or no followers */
+        }
         await refresh();
         return result;
       } finally {
