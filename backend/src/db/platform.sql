@@ -24,3 +24,28 @@ CREATE TABLE IF NOT EXISTS copy_subscriptions (
   active boolean DEFAULT true,
   created_at timestamp DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS copy_jobs (
+  id varchar PRIMARY KEY,
+  follower_account_id varchar NOT NULL,
+  follower_key varchar NOT NULL,
+  provider_code varchar,
+  risk_pct integer DEFAULT 50,
+  trade json NOT NULL,
+  status varchar DEFAULT 'queued',
+  result json,
+  created_at timestamp DEFAULT now(),
+  completed_at timestamp
+);
+
+CREATE TABLE IF NOT EXISTS bot_runs (
+  id varchar PRIMARY KEY,
+  user_key varchar NOT NULL,
+  bot_config_id varchar REFERENCES bot_configs(id),
+  deriv_run_id varchar,
+  strategy_id varchar NOT NULL,
+  status varchar DEFAULT 'running',
+  stats json,
+  created_at timestamp DEFAULT now(),
+  stopped_at timestamp
+);
