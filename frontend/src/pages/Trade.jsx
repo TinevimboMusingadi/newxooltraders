@@ -1,9 +1,11 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
+import { RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import RealTradeConfirmModal from '../components/RealTradeConfirmModal';
 import LiveChart from '../components/LiveChart';
 import TradePanel from '../components/TradePanel';
 import OpenPositions from '../components/OpenPositions';
+import { CardSkeleton } from '../components/ui/Skeleton';
 import { useAuth } from '../hooks/useAuth';
 import { useMarket } from '../context/MarketContext';
 import { useTradingWs } from '../context/TradingWsContext';
@@ -25,9 +27,33 @@ export default function Trade() {
   const [trading, setTrading] = useState(false);
   const [showRealConfirm, setShowRealConfirm] = useState(false);
   const [pendingTrade, setPendingTrade] = useState(null);
+  const [lastTrade, setLastTrade] = useState(null);
+  const [closingAll, setClosingAll] = useState(false);
+  const subscribedRef = useRef(new Set());
 
-  const { connected, balance, openContracts, error, getProposal, buyContract, sellContract, updateContract } =
-    useTradingWs();
+  const {
+    connected,
+    balance,
+    openContracts,
+    error,
+    getProposal,
+    buyContract,
+    sellContract,
+    updateContract,
+    subscribeOpenContract,
+  } = useTradingWs();
+
+  useEffect(() => {
+    if (!connected || !openContracts?.length) return;
+    for (const c of openContracts) {
+      const id = c.contract_id;
+      if (!id || subscribedRef.current.has(id)) continue;
+      subscribedRef.current.add(id);
+      subscribeOpenContract(id).catch(() => {
+        subscribedRef.current.delete(id);
+      });
+    }
+  }, [connected, openContracts, subscribeOpenContract]);
 
   const executeTrade = useCallback(
     async (params) => {
@@ -36,15 +62,25 @@ export default function Trade() {
         const proposal = await getProposal(params);
         const proposalId = proposal.proposal?.id;
         const askPrice = proposal.proposal?.ask_price;
+        const payout = proposal.proposal?.payout;
         if (!proposalId || askPrice == null) {
           throw new Error('No proposal received');
         }
         const result = await buyContract(String(proposalId), askPrice);
-        toast.success(`Trade opened: ${params.symbol} ${params.contract_type}`, {
+        const contractId = result.buy?.contract_id;
+        setLastTrade({
+          symbol: params.symbol,
+          contractType: params.contractType,
+          stake: askPrice,
+          payout,
+          contractId,
+          at: Date.now(),
+        });
+        toast.success(`Trade opened: ${params.symbol} ${params.contractType}`, {
           description: `Stake: ${askPrice} ${balance?.currency || 'USD'}`,
         });
         try {
-          await api.reportCopyTrade({ ...params, contractId: result.buy?.contract_id });
+          await api.reportCopyTrade({ ...params, contractId });
         } catch { /* not a provider */ }
         await refresh();
         return result;
@@ -83,6 +119,23 @@ export default function Trade() {
     [sellContract],
   );
 
+  const handleCloseAll = useCallback(async () => {
+    if (!openContracts?.length) return;
+    setClosingAll(true);
+    try {
+      for (const c of openContracts) {
+        if (c.is_sold !== 1 && c.is_settleable !== 1) {
+          await sellContract(c.contract_id);
+        }
+      }
+      toast.success('All positions closed');
+    } catch (err) {
+      toast.error('Close all failed', { description: err.message });
+    } finally {
+      setClosingAll(false);
+    }
+  }, [openContracts, sellContract]);
+
   const handleUpdateTP = useCallback(
     async (contractId, takeProfit) => {
       try {
@@ -110,16 +163,31 @@ export default function Trade() {
   const accountMode = getAccountMode(selectedAccount, accountId);
   const accountDisplayId = getAccountDisplayId(selectedAccount, accountId);
 
+  const showConnecting = accountId && !connected && !error;
+
   return (
     <>
-      <div className="page-header-block">
-        <h1 className="heading-lg">Trading Dashboard</h1>
-        <p className="text-secondary">
-          {selectedSymbol} · {accountMode.shortLabel} · {accountDisplayId}
-        </p>
+      <div className="page-header-block trade-page-header">
+        <div>
+          <h1 className="heading-lg">Trading Dashboard</h1>
+          <p className="text-secondary">
+            {selectedSymbol} · {accountMode.shortLabel} · {accountDisplayId}
+          </p>
+        </div>
+        <div className={`connection-badge ${connected ? 'online' : 'offline'}`}>
+          {connected ? <Wifi size={14} /> : <WifiOff size={14} />}
+          {connected ? 'Connected' : showConnecting ? 'Connecting…' : 'Disconnected'}
+        </div>
       </div>
 
-      {error && <div className="auth-error-banner">{error}</div>}
+      {error && (
+        <div className="auth-error-banner">
+          {error}
+          <button type="button" className="btn btn-ghost btn-xs" onClick={() => window.location.reload()}>
+            <RefreshCw size={12} /> Reconnect
+          </button>
+        </div>
+      )}
       {accountError && (
         <div className="auth-error-banner account-setup-notice">
           Account setup: {accountError}
@@ -128,6 +196,13 @@ export default function Trade() {
       {!accountId && !accountError && (
         <div className="auth-error-banner account-setup-notice">
           No Deriv account linked yet. Create a demo account from Profile.
+        </div>
+      )}
+
+      {showConnecting && (
+        <div className="trade-connecting">
+          <CardSkeleton lines={2} />
+          <p className="text-muted">Connecting to trading server…</p>
         </div>
       )}
 
@@ -142,21 +217,35 @@ export default function Trade() {
           balance={balance}
           openContracts={openContracts}
           onTrade={handleTrade}
+          getProposal={getProposal}
           trading={trading}
           lastPrice={lastPrice}
           accountMode={accountMode.mode}
         />
       </div>
 
-      {openContracts?.length > 0 && (
-        <OpenPositions
-          contracts={openContracts}
-          onSell={handleSell}
-          onUpdateTP={handleUpdateTP}
-          onUpdateSL={handleUpdateSL}
-          currency={balance?.currency || 'USD'}
-        />
+      {lastTrade && (
+        <div className="last-trade-banner card">
+          <span className="text-muted">Last trade</span>
+          <strong>{lastTrade.symbol}</strong>
+          <span>{lastTrade.contractType}</span>
+          <span className="mono">Stake {Number(lastTrade.stake).toFixed(2)}</span>
+          {lastTrade.payout != null && (
+            <span className="mono profit">Payout {Number(lastTrade.payout).toFixed(2)}</span>
+          )}
+          {lastTrade.contractId && <span className="text-muted">#{lastTrade.contractId}</span>}
+        </div>
       )}
+
+      <OpenPositions
+        contracts={openContracts}
+        onSell={handleSell}
+        onUpdateTP={handleUpdateTP}
+        onUpdateSL={handleUpdateSL}
+        onCloseAll={handleCloseAll}
+        closingAll={closingAll}
+        currency={balance?.currency || 'USD'}
+      />
 
       <RealTradeConfirmModal
         open={showRealConfirm}
