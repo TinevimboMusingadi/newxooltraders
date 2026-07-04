@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Star } from 'lucide-react';
-import { useActiveSymbols } from '../hooks/useActiveSymbols';
+import { Star, TrendingUp, TrendingDown } from 'lucide-react';
+import { useActiveSymbols, useRealtimePrices } from '../hooks/useActiveSymbols';
 import { useMarket } from '../context/MarketContext';
 import { CATEGORIES } from '../lib/symbolGroups';
+import { Skeleton } from '../components/ui/Skeleton';
 
 export default function Markets() {
   const { symbols, loading } = useActiveSymbols();
@@ -12,12 +13,15 @@ export default function Markets() {
   const [category, setCategory] = useState('all');
   const [search, setSearch] = useState('');
 
-  const filtered = symbols.filter((s) => {
+  const filtered = useMemo(() => symbols.filter((s) => {
     const matchCat = category === 'all' || s.category === category;
     const q = search.toLowerCase();
     const matchSearch = !q || s.symbol.toLowerCase().includes(q) || s.displayName?.toLowerCase().includes(q);
     return matchCat && matchSearch;
-  });
+  }), [symbols, category, search]);
+
+  const priceSymbols = useMemo(() => filtered.slice(0, 40).map((s) => s.symbol), [filtered]);
+  const { prices } = useRealtimePrices(priceSymbols);
 
   const pick = (symbol) => {
     selectSymbol(symbol);
@@ -35,7 +39,7 @@ export default function Markets() {
         <input
           type="search"
           className="markets-search"
-          placeholder="Search symbols…"
+          placeholder="Search symbols..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -53,35 +57,58 @@ export default function Markets() {
         </div>
       </div>
 
-      {loading && <p className="text-muted">Loading markets…</p>}
-
-      <div className="markets-grid">
-        {filtered.map((s) => (
-          <div key={s.symbol} className="market-card card">
-            <div className="market-card-top">
-              <span className="market-category">{s.category}</span>
-              <button type="button" className="fav-btn" onClick={() => toggleFavorite(s.symbol)}>
-                <Star size={16} fill={favorites.includes(s.symbol) ? 'currentColor' : 'none'} />
-              </button>
+      {loading && (
+        <div className="markets-grid">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className="market-card card">
+              <Skeleton width="50%" height="0.8rem" />
+              <Skeleton width="80%" height="1.1rem" style={{ marginTop: '8px' }} />
+              <Skeleton width="60%" height="0.85rem" style={{ marginTop: '6px' }} />
             </div>
-            <h3 className="heading-md">{s.displayName || s.symbol}</h3>
-            <p className="text-muted">{s.symbol}</p>
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => pick(s.symbol)}>
-              Trade
-            </button>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
+
+      {!loading && (
+        <div className="markets-grid">
+          {filtered.map((s) => {
+            const price = prices[s.symbol];
+            return (
+              <div key={s.symbol} className="market-card card" data-tick={price?.dir}>
+                <div className="market-card-top">
+                  <span className="market-category">{s.category}</span>
+                  <button type="button" className="fav-btn" onClick={() => toggleFavorite(s.symbol)}>
+                    <Star size={14} fill={favorites.includes(s.symbol) ? 'currentColor' : 'none'} />
+                  </button>
+                </div>
+                <h3 className="market-name">{s.displayName || s.symbol}</h3>
+                <div className="market-price-row">
+                  <span className="market-price mono">{price?.quote?.toFixed(s.pip ? String(1/s.pip).length - 1 : 2) || '—'}</span>
+                  {price?.dir === 'up' && <TrendingUp size={14} className="profit" />}
+                  {price?.dir === 'down' && <TrendingDown size={14} className="loss" />}
+                </div>
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => pick(s.symbol)}>
+                  Trade
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {favorites.length > 0 && (
         <div className="favorites-section">
-          <h3 className="heading-md">Favorites</h3>
+          <h3 className="heading-md">Watchlist</h3>
           <div className="favorites-row">
-            {favorites.map((sym) => (
-              <Link key={sym} to="/trade" className="account-chip" onClick={() => selectSymbol(sym)}>
-                {sym}
-              </Link>
-            ))}
+            {favorites.map((sym) => {
+              const p = prices[sym];
+              return (
+                <Link key={sym} to="/trade" className="watchlist-chip" onClick={() => selectSymbol(sym)}>
+                  <span className="watchlist-sym">{sym}</span>
+                  {p?.quote && <span className={`mono ${p.dir === 'up' ? 'profit' : p.dir === 'down' ? 'loss' : ''}`}>{p.quote.toFixed(2)}</span>}
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}
