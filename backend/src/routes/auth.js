@@ -5,6 +5,7 @@ import {
   exchangeCodeForTokens,
   getAccounts,
 } from '../services/deriv.js';
+import { mapAccount, mapAccounts, isDemoAccount } from '../lib/mapAccount.js';
 import { generateCodeChallenge, generateCodeVerifier, generateState } from '../services/pkce.js';
 
 const router = Router();
@@ -28,7 +29,7 @@ async function applyTokenSession(req, accessToken, { refreshToken, expiresIn } =
     }
   }
 
-  const demoAccount = accounts.find((a) => a.is_virtual || a.account_type === 'demo');
+  const demoAccount = accounts.find(isDemoAccount);
   const defaultAccount = demoAccount || accounts[0];
 
   req.session.accessToken = accessToken;
@@ -42,13 +43,7 @@ async function applyTokenSession(req, accessToken, { refreshToken, expiresIn } =
     delete req.session.selectedAccountId;
   }
 
-  req.session.accounts = accounts.map((a) => ({
-    accountId: a.account_id || a.loginid,
-    loginid: a.loginid || a.account_id,
-    currency: a.currency,
-    isVirtual: Boolean(a.is_virtual),
-    accountType: a.account_type || (a.is_virtual ? 'demo' : 'real'),
-  }));
+  req.session.accounts = mapAccounts(accounts);
 }
 
 function startOAuth(req, res, register = false) {
