@@ -86,6 +86,36 @@ export async function getWsOtp(accessToken, accountId) {
   return data;
 }
 
+export async function createDemoAccount(accessToken) {
+  const res = await fetch(`${config.deriv.apiBase}/trading/v1/options/accounts`, {
+    method: 'POST',
+    headers: derivHeaders(accessToken),
+    body: JSON.stringify({ currency: 'USD', group: 'row', account_type: 'demo' }),
+  });
+
+  const data = await res.json();
+  if (!res.ok && res.status !== 200) {
+    throw new Error(data.message || data.error?.message || 'Failed to create demo account');
+  }
+  return data;
+}
+
+export async function resetDemoBalance(accessToken, accountId) {
+  const res = await fetch(
+    `${config.deriv.apiBase}/trading/v1/options/accounts/${accountId}/reset-demo-balance`,
+    {
+      method: 'POST',
+      headers: derivHeaders(accessToken),
+    },
+  );
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || data.error?.message || 'Failed to reset demo balance');
+  }
+  return data;
+}
+
 export function buildAuthorizeUrl({ codeChallenge, state, register = false }) {
   const url = new URL(config.deriv.authUrl);
   url.searchParams.set('response_type', 'code');
