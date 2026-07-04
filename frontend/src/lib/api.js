@@ -31,6 +31,11 @@ export const api = {
     request('/api/trading/accounts/create-demo', { method: 'POST' }),
   resetDemoBalance: (accountId) =>
     request(`/api/trading/accounts/${accountId}/reset-demo`, { method: 'POST' }),
+  getWsOtp: (accountId) =>
+    request('/api/trading/ws-otp', {
+      method: 'POST',
+      body: JSON.stringify({ accountId }),
+    }),
   getSymbols: () => request('/api/markets/symbols'),
   getBotConfigs: () => request('/api/bots/configs'),
   saveBotConfig: (config) =>
