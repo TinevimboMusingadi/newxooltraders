@@ -27,11 +27,27 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ accountId }),
     }),
-  getWsOtp: (accountId) =>
-    request('/api/trading/ws-otp', {
+  createDemoAccount: () =>
+    request('/api/trading/accounts/create-demo', { method: 'POST' }),
+  resetDemoBalance: (accountId) =>
+    request(`/api/trading/accounts/${accountId}/reset-demo`, { method: 'POST' }),
+  getSymbols: () => request('/api/markets/symbols'),
+  getBotConfigs: () => request('/api/bots/configs'),
+  saveBotConfig: (config) =>
+    request('/api/bots/configs', { method: 'POST', body: JSON.stringify(config) }),
+  deleteBotConfig: (id) =>
+    request(`/api/bots/configs/${id}`, { method: 'DELETE' }),
+  enableCopyProvider: () => request('/api/copy/provider', { method: 'POST' }),
+  getCopyProvider: () => request('/api/copy/provider'),
+  subscribeCopy: (providerCode, riskPct) =>
+    request('/api/copy/subscribe', {
       method: 'POST',
-      body: JSON.stringify({ accountId }),
+      body: JSON.stringify({ providerCode, riskPct }),
     }),
+  getCopySubscriptions: () => request('/api/copy/subscriptions'),
+  unsubscribeCopy: (id) => request(`/api/copy/subscribe/${id}`, { method: 'DELETE' }),
+  reportCopyTrade: (payload) =>
+    request('/api/copy/trade', { method: 'POST', body: JSON.stringify(payload) }),
 };
 
 export const authUrls = {
