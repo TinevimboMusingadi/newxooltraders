@@ -1,7 +1,9 @@
 import { useCallback, useState } from 'react';
+import { toast } from 'sonner';
 import RealTradeConfirmModal from '../components/RealTradeConfirmModal';
 import LiveChart from '../components/LiveChart';
 import TradePanel from '../components/TradePanel';
+import OpenPositions from '../components/OpenPositions';
 import { useAuth } from '../hooks/useAuth';
 import { useMarket } from '../context/MarketContext';
 import { useTradingWs } from '../context/TradingWsContext';
@@ -24,7 +26,7 @@ export default function Trade() {
   const [showRealConfirm, setShowRealConfirm] = useState(false);
   const [pendingTrade, setPendingTrade] = useState(null);
 
-  const { connected, balance, openContracts, error, getProposal, buyContract } =
+  const { connected, balance, openContracts, error, getProposal, buyContract, sellContract, updateContract } =
     useTradingWs();
 
   const executeTrade = useCallback(
@@ -38,21 +40,22 @@ export default function Trade() {
           throw new Error('No proposal received');
         }
         const result = await buyContract(String(proposalId), askPrice);
+        toast.success(`Trade opened: ${params.symbol} ${params.contract_type}`, {
+          description: `Stake: ${askPrice} ${balance?.currency || 'USD'}`,
+        });
         try {
-          await api.reportCopyTrade({
-            ...params,
-            contractId: result.buy?.contract_id,
-          });
-        } catch {
-          /* not a provider or no followers */
-        }
+          await api.reportCopyTrade({ ...params, contractId: result.buy?.contract_id });
+        } catch { /* not a provider */ }
         await refresh();
         return result;
+      } catch (err) {
+        toast.error('Trade failed', { description: err.message });
+        throw err;
       } finally {
         setTrading(false);
       }
     },
-    [getProposal, buyContract, refresh],
+    [getProposal, buyContract, refresh, balance],
   );
 
   const handleTrade = useCallback(
@@ -66,6 +69,42 @@ export default function Trade() {
       return executeTrade(params);
     },
     [selectedAccount, executeTrade],
+  );
+
+  const handleSell = useCallback(
+    async (contractId) => {
+      try {
+        await sellContract(contractId);
+        toast.success('Position closed');
+      } catch (err) {
+        toast.error('Sell failed', { description: err.message });
+      }
+    },
+    [sellContract],
+  );
+
+  const handleUpdateTP = useCallback(
+    async (contractId, takeProfit) => {
+      try {
+        await updateContract(contractId, { take_profit: takeProfit });
+        toast.success('Take profit updated');
+      } catch (err) {
+        toast.error('Update failed', { description: err.message });
+      }
+    },
+    [updateContract],
+  );
+
+  const handleUpdateSL = useCallback(
+    async (contractId, stopLoss) => {
+      try {
+        await updateContract(contractId, { stop_loss: stopLoss });
+        toast.success('Stop loss updated');
+      } catch (err) {
+        toast.error('Update failed', { description: err.message });
+      }
+    },
+    [updateContract],
   );
 
   const accountMode = getAccountMode(selectedAccount, accountId);
@@ -108,6 +147,16 @@ export default function Trade() {
           accountMode={accountMode.mode}
         />
       </div>
+
+      {openContracts?.length > 0 && (
+        <OpenPositions
+          contracts={openContracts}
+          onSell={handleSell}
+          onUpdateTP={handleUpdateTP}
+          onUpdateSL={handleUpdateSL}
+          currency={balance?.currency || 'USD'}
+        />
+      )}
 
       <RealTradeConfirmModal
         open={showRealConfirm}
