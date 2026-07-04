@@ -1,6 +1,12 @@
 import { Router } from 'express';
 import { ensureValidToken } from '../middleware/requireAuth.js';
-import { getAccounts, getWsOtp } from '../services/deriv.js';
+import {
+  createDemoAccount,
+  getAccounts,
+  getWsOtp,
+  resetDemoBalance,
+} from '../services/deriv.js';
+import { mapAccounts } from '../lib/mapAccount.js';
 
 const router = Router();
 
@@ -9,18 +15,46 @@ router.use(ensureValidToken);
 router.get('/accounts', async (req, res) => {
   try {
     const data = await getAccounts(req.session.accessToken);
-    const accounts = (data.data || []).map((a) => ({
-      accountId: a.account_id || a.loginid,
-      loginid: a.loginid || a.account_id,
-      currency: a.currency,
-      isVirtual: Boolean(a.is_virtual),
-      accountType: a.account_type || (a.is_virtual ? 'demo' : 'real'),
-    }));
+    const raw = data.data || [];
+    const accounts = mapAccounts(Array.isArray(raw) ? raw : [raw].filter(Boolean));
 
     req.session.accounts = accounts;
     req.session.save(() => {});
 
     res.json({ accounts });
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
+router.post('/accounts/create-demo', async (req, res) => {
+  try {
+    const data = await createDemoAccount(req.session.accessToken);
+    const refresh = await getAccounts(req.session.accessToken);
+    const raw = refresh.data || [];
+    const accounts = mapAccounts(Array.isArray(raw) ? raw : [raw].filter(Boolean));
+    req.session.accounts = accounts;
+    const created = mapAccounts(Array.isArray(data.data) ? data.data : data.data ? [data.data] : []);
+    const newest = created[0];
+    if (newest) req.session.selectedAccountId = newest.accountId;
+    req.session.save((err) => {
+      if (err) return res.status(500).json({ error: 'Failed to save session' });
+      res.json({ accounts, created: newest || null });
+    });
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
+router.post('/accounts/:id/reset-demo', async (req, res) => {
+  const { id } = req.params;
+  const account = (req.session.accounts || []).find((a) => a.accountId === id);
+  if (!account?.isVirtual) {
+    return res.status(400).json({ error: 'Only demo accounts can be reset' });
+  }
+  try {
+    await resetDemoBalance(req.session.accessToken, id);
+    res.json({ ok: true, message: 'Demo balance reset to $10,000' });
   } catch (err) {
     res.status(502).json({ error: err.message });
   }
