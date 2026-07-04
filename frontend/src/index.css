@@ -1867,3 +1867,144 @@ button {
   --normal-border: var(--border-subtle);
   --normal-text: var(--text-primary);
 }
+
+/* === Open Positions === */
+.open-positions {
+  margin-top: 16px;
+  padding: 16px;
+}
+
+.positions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.position-row {
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.position-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.position-symbol {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.position-type {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.position-stake {
+  font-size: 0.82rem;
+}
+
+.position-pl {
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.position-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.position-update-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  align-items: center;
+}
+
+.btn-xs {
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.btn-danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+}
+
+.btn-ghost:hover {
+  background: rgba(255,255,255,0.04);
+  color: var(--text-primary);
+}
+
+.input-sm {
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  width: 100px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+/* === Markets page upgrade === */
+.market-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 4px 0 2px;
+}
+
+.market-price-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 8px;
+}
+
+.market-price {
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.watchlist-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(107, 51, 238, 0.06);
+  border: 1px solid rgba(107, 51, 238, 0.2);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  transition: var(--transition-fast);
+}
+
+.watchlist-chip:hover {
+  background: rgba(107, 51, 238, 0.12);
+}
+
+.watchlist-sym {
+  font-weight: 600;
+}
