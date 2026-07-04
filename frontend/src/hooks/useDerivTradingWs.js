@@ -118,17 +118,23 @@ export function useDerivTradingWs(accountId) {
   }, [accountId]);
 
   const getProposal = useCallback(
-    async ({ contractType, amount, duration, durationUnit, symbol, currency }) => {
-      return send({
+    async ({ contractType, amount, duration, durationUnit, symbol, currency, barrier, growthRate, limitTicks }) => {
+      const payload = {
         proposal: 1,
         amount,
         basis: 'stake',
         contract_type: contractType,
         currency,
-        duration,
-        duration_unit: durationUnit,
         symbol,
-      });
+      };
+      if (duration != null) {
+        payload.duration = duration;
+        payload.duration_unit = durationUnit;
+      }
+      if (barrier != null) payload.barrier = String(barrier);
+      if (growthRate != null) payload.growth_rate = growthRate;
+      if (limitTicks != null) payload.limit_order = { take_profit: limitTicks };
+      return send(payload);
     },
     [send],
   );
@@ -145,6 +151,30 @@ export function useDerivTradingWs(accountId) {
     [send],
   );
 
+  const queueBulkTrades = useCallback(
+    async (trades, { delayMs = 800, maxConcurrent = 3 } = {}) => {
+      const results = [];
+      for (let i = 0; i < trades.length; i += maxConcurrent) {
+        const batch = trades.slice(i, i + maxConcurrent);
+        const batchResults = await Promise.all(
+          batch.map(async (t) => {
+            const proposal = await getProposal(t);
+            const id = proposal.proposal?.id;
+            const price = proposal.proposal?.ask_price;
+            if (!id || price == null) throw new Error('No proposal');
+            return buyContract(String(id), price);
+          }),
+        );
+        results.push(...batchResults);
+        if (i + maxConcurrent < trades.length) {
+          await new Promise((r) => setTimeout(r, delayMs));
+        }
+      }
+      return results;
+    },
+    [getProposal, buyContract],
+  );
+
   return {
     connected,
     balance,
@@ -152,5 +182,6 @@ export function useDerivTradingWs(accountId) {
     error,
     getProposal,
     buyContract,
+    queueBulkTrades,
   };
 }
