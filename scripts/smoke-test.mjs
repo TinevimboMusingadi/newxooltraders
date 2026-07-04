@@ -22,6 +22,10 @@ async function run() {
     missing: configData.missing,
   });
 
+  if (process.env.REQUIRE_OAUTH === '1' && !configData.oauthReady) {
+    throw new Error(`Expected oauthReady on ${BASE}, missing: ${configData.missing?.join(', ')}`);
+  }
+
   const me = await fetch(`${BASE}/auth/me`);
   const meData = await me.json();
   console.log('✓ Auth me (unauthenticated):', meData.authenticated === false ? 'ok' : meData);
