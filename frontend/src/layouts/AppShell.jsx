@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import {
   Bot,
+  Clock,
   Copy,
   LayoutGrid,
   LineChart,
@@ -16,6 +17,7 @@ import { useAuth } from '../hooks/useAuth';
 const NAV = [
   { to: '/trade', label: 'Trade', icon: LineChart },
   { to: '/markets', label: 'Markets', icon: LayoutGrid },
+  { to: '/history', label: 'History', icon: Clock },
   { to: '/scanner', label: 'Scanner', icon: Radar },
   { to: '/bulk', label: 'Bulk', icon: Zap },
   { to: '/bots', label: 'Bots', icon: Bot },
