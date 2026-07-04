@@ -1,12 +1,11 @@
 import session from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
-import { default as connectRedis } from 'connect-redis';
+import RedisStore from 'connect-redis';
 import pg from 'pg';
 import { config } from '../config.js';
 import { redis } from '../lib/redis.js';
 
 const PgSession = connectPgSimple(session);
-const RedisStore = connectRedis(session);
 
 export function createSessionMiddleware() {
   const options = {
