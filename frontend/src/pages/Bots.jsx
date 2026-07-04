@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useMarket } from '../context/MarketContext';
 import { useDerivTradingWs } from '../hooks/useDerivTradingWs';
 import { createStrategyRunner, BOT_PRESETS } from '../lib/strategyRunner';
+import { DEFAULT_DURATION } from '../lib/tradeDurations';
 
 export default function Bots() {
   const { user } = useAuth();
@@ -20,7 +21,15 @@ export default function Bots() {
 
   useEffect(() => {
     runnerRef.current = createStrategyRunner({
-      onProposal: (p) => getProposal({ ...p, contractType: 'CALL', symbol: selectedSymbol, duration: 60, durationUnit: 's', currency: 'USD' }),
+      onProposal: (p) =>
+        getProposal({
+          ...p,
+          contractType: 'CALL',
+          symbol: selectedSymbol,
+          duration: DEFAULT_DURATION.value,
+          durationUnit: DEFAULT_DURATION.unit,
+          currency: 'USD',
+        }),
       onBuy: buyContract,
       onLog: (entry) => setLogs((prev) => [entry, ...prev].slice(0, 50)),
     });
