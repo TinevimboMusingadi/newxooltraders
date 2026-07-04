@@ -14,6 +14,10 @@ import botsRoutes from './routes/bots.js';
 import copyRoutes from './routes/copy.js';
 import historyRoutes from './routes/history.js';
 
+if (pool) {
+  import('./db/queries/platform.js').then((m) => m.ensureTables().catch(console.error));
+}
+
 const app = express();
 
 app.set('trust proxy', 1);
