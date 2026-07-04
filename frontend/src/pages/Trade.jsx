@@ -1,25 +1,32 @@
 import { useCallback, useState } from 'react';
-import Navbar from '../components/Navbar';
+import RealTradeConfirmModal from '../components/RealTradeConfirmModal';
 import LiveChart from '../components/LiveChart';
 import TradePanel from '../components/TradePanel';
 import { useAuth } from '../hooks/useAuth';
+import { useMarket } from '../context/MarketContext';
 import { useDerivTradingWs } from '../hooks/useDerivTradingWs';
-import { getAccountDisplayId, getAccountTypeLabel } from '../lib/accountDisplay';
-
-const DEFAULT_SYMBOL = '1HZ100V';
+import {
+  getAccountDisplayId,
+  getAccountMode,
+  hasRealTradeConfirmation,
+  isDemoAccount,
+} from '../lib/accountDisplay';
 
 export default function Trade() {
   const { user, refresh } = useAuth();
+  const { selectedSymbol } = useMarket();
   const accountId = user?.selectedAccountId;
   const selectedAccount = user?.accounts?.find((a) => a.accountId === accountId);
   const accountError = user?.lastAccountError;
   const [lastPrice, setLastPrice] = useState(null);
   const [trading, setTrading] = useState(false);
+  const [showRealConfirm, setShowRealConfirm] = useState(false);
+  const [pendingTrade, setPendingTrade] = useState(null);
 
   const { connected, balance, openContracts, error, getProposal, buyContract } =
     useDerivTradingWs(accountId);
 
-  const handleTrade = useCallback(
+  const executeTrade = useCallback(
     async (params) => {
       setTrading(true);
       try {
@@ -39,52 +46,68 @@ export default function Trade() {
     [getProposal, buyContract, refresh],
   );
 
-  const accountTypeLabel = getAccountTypeLabel(selectedAccount, accountId);
+  const handleTrade = useCallback(
+    async (params) => {
+      const isReal = selectedAccount && !isDemoAccount(selectedAccount);
+      if (isReal && !hasRealTradeConfirmation()) {
+        setPendingTrade(params);
+        setShowRealConfirm(true);
+        return;
+      }
+      return executeTrade(params);
+    },
+    [selectedAccount, executeTrade],
+  );
+
+  const accountMode = getAccountMode(selectedAccount, accountId);
   const accountDisplayId = getAccountDisplayId(selectedAccount, accountId);
 
   return (
     <>
-      <Navbar variant="app" />
-      <main className="trade-page">
-        <div className="container">
-          <div className="trade-page-header">
-            <div>
-              <h1 className="heading-lg">Trading Dashboard</h1>
-              <p className="text-secondary">
-                {DEFAULT_SYMBOL} · {accountTypeLabel} · {accountDisplayId}
-              </p>
-            </div>
-          </div>
+      <div className="page-header-block">
+        <h1 className="heading-lg">Trading Dashboard</h1>
+        <p className="text-secondary">
+          {selectedSymbol} · {accountMode.shortLabel} · {accountDisplayId}
+        </p>
+      </div>
 
-          {error && <div className="auth-error-banner">{error}</div>}
-          {accountError && (
-            <div className="auth-error-banner" style={{ borderColor: 'var(--purple-main)', color: 'var(--purple-light)' }}>
-              Account setup: {accountError}
-            </div>
-          )}
-          {!accountId && !accountError && (
-            <div className="auth-error-banner" style={{ borderColor: 'var(--purple-main)', color: 'var(--purple-light)' }}>
-              No Deriv account linked yet. Try logging out and signing in again, or create a demo account on Deriv first.
-            </div>
-          )}
-
-          <div className="trade-layout">
-            <div className="trade-chart-section card">
-              <LiveChart symbol={DEFAULT_SYMBOL} onPriceUpdate={setLastPrice} />
-            </div>
-            <TradePanel
-              symbol={DEFAULT_SYMBOL}
-              currency={selectedAccount?.currency || balance?.currency || 'USD'}
-              connected={connected}
-              balance={balance}
-              openContracts={openContracts}
-              onTrade={handleTrade}
-              trading={trading}
-              lastPrice={lastPrice}
-            />
-          </div>
+      {error && <div className="auth-error-banner">{error}</div>}
+      {accountError && (
+        <div className="auth-error-banner account-setup-notice">
+          Account setup: {accountError}
         </div>
-      </main>
+      )}
+      {!accountId && !accountError && (
+        <div className="auth-error-banner account-setup-notice">
+          No Deriv account linked yet. Create a demo account from Profile.
+        </div>
+      )}
+
+      <div className="trade-layout">
+        <div className="trade-chart-section card">
+          <LiveChart symbol={selectedSymbol} onPriceUpdate={setLastPrice} />
+        </div>
+        <TradePanel
+          symbol={selectedSymbol}
+          currency={selectedAccount?.currency || balance?.currency || 'USD'}
+          connected={connected}
+          balance={balance}
+          openContracts={openContracts}
+          onTrade={handleTrade}
+          trading={trading}
+          lastPrice={lastPrice}
+          accountMode={accountMode.mode}
+        />
+      </div>
+
+      <RealTradeConfirmModal
+        open={showRealConfirm}
+        onClose={() => {
+          setShowRealConfirm(false);
+          setPendingTrade(null);
+        }}
+        onConfirm={() => pendingTrade && executeTrade(pendingTrade)}
+      />
     </>
   );
 }
