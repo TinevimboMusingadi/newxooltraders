@@ -53,6 +53,13 @@ export const api = {
   unsubscribeCopy: (id) => request(`/api/copy/subscribe/${id}`, { method: 'DELETE' }),
   reportCopyTrade: (payload) =>
     request('/api/copy/trade', { method: 'POST', body: JSON.stringify(payload) }),
+  getPendingCopyJobs: () => request('/api/copy/jobs/pending'),
+  completeCopyJob: (id, result) =>
+    request(`/api/copy/jobs/${id}/complete`, {
+      method: 'POST',
+      body: JSON.stringify(result),
+    }),
+  getCopyJobs: () => request('/api/copy/jobs'),
 };
 
 export const authUrls = {
