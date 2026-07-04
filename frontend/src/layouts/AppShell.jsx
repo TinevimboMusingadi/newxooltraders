@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import AccountModeBanner from '../components/AccountModeBanner';
+import { TradingWsProvider } from '../context/TradingWsContext';
 import { useAuth } from '../hooks/useAuth';
 
 const NAV = [
@@ -49,7 +50,9 @@ export default function AppShell() {
             account={selectedAccount}
             accountId={user?.selectedAccountId}
           />
-          <Outlet />
+          <TradingWsProvider>
+            <Outlet />
+          </TradingWsProvider>
         </main>
       </div>
     </div>
