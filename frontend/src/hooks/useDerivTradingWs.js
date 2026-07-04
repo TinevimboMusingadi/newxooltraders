@@ -47,7 +47,7 @@ export function useDerivTradingWs(accountId) {
         ws.onopen = () => {
           setConnected(true);
           setError(null);
-          ws.send(JSON.stringify({ balance: 1, subscribe: 1, req_id: reqIdRef.current++ }));
+          ws.send(JSON.stringify({ balance: 1, req_id: reqIdRef.current++ }));
           ws.send(JSON.stringify({ portfolio: 1, req_id: reqIdRef.current++ }));
           pingTimer = setInterval(() => {
             if (ws.readyState === WebSocket.OPEN) {
