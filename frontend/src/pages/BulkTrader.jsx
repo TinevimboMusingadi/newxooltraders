@@ -11,6 +11,7 @@ import {
   isDemoAccount,
   setRealTradeConfirmation,
 } from '../lib/accountDisplay';
+import { DEFAULT_DURATION, TRADE_DURATIONS } from '../lib/tradeDurations';
 
 const CONTRACT_TYPES = [
   { id: 'DIGITEVEN', label: 'Even' },
@@ -31,6 +32,7 @@ export default function BulkTrader() {
   const [count, setCount] = useState(3);
   const [contractType, setContractType] = useState(params.get('type') || 'DIGITEVEN');
   const [barrier, setBarrier] = useState(Number(params.get('barrier') || 5));
+  const [duration, setDuration] = useState(DEFAULT_DURATION);
   const [dist, setDist] = useState(null);
   const [log, setLog] = useState([]);
   const [running, setRunning] = useState(false);
@@ -49,8 +51,8 @@ export default function BulkTrader() {
       trades.push({
         contractType,
         amount: stake,
-        duration: 1,
-        durationUnit: 't',
+        duration: duration.value,
+        durationUnit: duration.unit,
         symbol,
         currency: selectedAccount?.currency || 'USD',
         ...(contractType.includes('DIGIT') && contractType !== 'DIGITEVEN' && contractType !== 'DIGITODD'
@@ -59,7 +61,7 @@ export default function BulkTrader() {
       });
     }
     return trades;
-  }, [count, contractType, stake, symbol, selectedAccount, barrier]);
+  }, [count, contractType, stake, symbol, selectedAccount, barrier, duration]);
 
   const executeBulk = async () => {
     setRunning(true);
@@ -118,6 +120,22 @@ export default function BulkTrader() {
           <label>
             Stake $
             <input type="number" min={1} max={100} value={stake} onChange={(e) => setStake(Number(e.target.value))} />
+          </label>
+          <label>
+            Duration
+            <select
+              value={`${duration.value}${duration.unit}`}
+              onChange={(e) => {
+                const d = TRADE_DURATIONS.find((x) => `${x.value}${x.unit}` === e.target.value);
+                if (d) setDuration(d);
+              }}
+            >
+              {TRADE_DURATIONS.map((d) => (
+                <option key={`${d.value}${d.unit}`} value={`${d.value}${d.unit}`}>
+                  {d.label}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             Count (max 10)
