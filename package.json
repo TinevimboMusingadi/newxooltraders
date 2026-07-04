@@ -10,7 +10,8 @@
     "install:all": "npm install --prefix frontend && npm install --prefix backend",
     "start:backend": "npm start --prefix backend",
     "test:smoke": "node scripts/smoke-test.mjs",
-    "test:deriv": "node scripts/test-deriv-config.mjs"
+    "test:deriv": "node scripts/test-deriv-config.mjs",
+    "test": "npm run test --prefix frontend && npm run test --prefix backend"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
