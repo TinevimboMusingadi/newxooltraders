@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "build": "node -e \"console.log('No build step — API starts with npm start')\""
+    "build": "node -e \"console.log('No build step — API starts with npm start')\"",
+    "test": "node --test src/lib/*.test.js"
   },
   "dependencies": {
     "connect-pg-simple": "^10.0.0",
