@@ -1,12 +1,8 @@
 import { useState } from 'react';
 import { TrendingDown, TrendingUp } from 'lucide-react';
+import { DEFAULT_DURATION, TRADE_DURATIONS } from '../lib/tradeDurations';
 
 const STAKES = [1, 5, 10];
-const DURATIONS = [
-  { label: '1 min', value: 60, unit: 's' },
-  { label: '5 min', value: 300, unit: 's' },
-  { label: '1 tick', value: 1, unit: 't' },
-];
 
 const MODES = [
   { id: 'rise_fall', label: 'Rise/Fall' },
@@ -26,7 +22,7 @@ export default function TradePanel({
   accountMode,
 }) {
   const [stake, setStake] = useState(1);
-  const [duration, setDuration] = useState(DURATIONS[0]);
+  const [duration, setDuration] = useState(DEFAULT_DURATION);
   const [mode, setMode] = useState('rise_fall');
   const [barrier, setBarrier] = useState(5);
   const [growthRate, setGrowthRate] = useState(3);
@@ -59,8 +55,8 @@ export default function TradePanel({
     runTrade({
       contractType,
       amount: stake,
-      duration: 1,
-      durationUnit: 't',
+      duration: duration.value,
+      durationUnit: duration.unit,
       symbol,
       currency: currency || 'USD',
       barrier,
@@ -141,12 +137,12 @@ export default function TradePanel({
       {mode !== 'accumulator' && (
         <div className="trade-field">
           <label>Duration</label>
-          <div className="preset-row">
-            {DURATIONS.map((d) => (
+          <div className="preset-row duration-row">
+            {TRADE_DURATIONS.map((d) => (
               <button
-                key={d.label}
+                key={`${d.value}${d.unit}`}
                 type="button"
-                className={`preset-btn ${duration.label === d.label ? 'active' : ''}`}
+                className={`preset-btn ${duration.value === d.value && duration.unit === d.unit ? 'active' : ''}`}
                 onClick={() => setDuration(d)}
               >
                 {d.label}
