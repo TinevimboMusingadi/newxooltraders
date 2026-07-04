@@ -7,6 +7,7 @@ import { getSetupStatus } from './services/setupStatus.js';
 import { createSessionMiddleware } from './middleware/session.js';
 import { redis } from './lib/redis.js';
 import { pool } from './db/pool.js';
+import { apiLimiter, authLimiter, tradeLimiter } from './middleware/rateLimit.js';
 import authRoutes from './routes/auth.js';
 import tradingRoutes from './routes/trading.js';
 import marketsRoutes from './routes/markets.js';
@@ -44,12 +45,12 @@ app.get('/api/config/public', (_req, res) => {
   res.json(getSetupStatus());
 });
 
-app.use('/auth', authRoutes);
-app.use('/api/trading', tradingRoutes);
-app.use('/api/markets', marketsRoutes);
-app.use('/api/bots', botsRoutes);
-app.use('/api/copy', copyRoutes);
-app.use('/api/history', historyRoutes);
+app.use('/auth', authLimiter, authRoutes);
+app.use('/api/trading', tradeLimiter, tradingRoutes);
+app.use('/api/markets', apiLimiter, marketsRoutes);
+app.use('/api/bots', apiLimiter, botsRoutes);
+app.use('/api/copy', tradeLimiter, copyRoutes);
+app.use('/api/history', apiLimiter, historyRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);
