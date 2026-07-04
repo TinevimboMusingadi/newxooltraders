@@ -6,6 +6,9 @@ import { getSetupStatus } from './services/setupStatus.js';
 import { createSessionMiddleware } from './middleware/session.js';
 import authRoutes from './routes/auth.js';
 import tradingRoutes from './routes/trading.js';
+import marketsRoutes from './routes/markets.js';
+import botsRoutes from './routes/bots.js';
+import copyRoutes from './routes/copy.js';
 
 const app = express();
 
@@ -31,6 +34,9 @@ app.get('/api/config/public', (_req, res) => {
 
 app.use('/auth', authRoutes);
 app.use('/api/trading', tradingRoutes);
+app.use('/api/markets', marketsRoutes);
+app.use('/api/bots', botsRoutes);
+app.use('/api/copy', copyRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);
