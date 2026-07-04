@@ -9,6 +9,7 @@ export default function CopyTrading() {
   const [providerCode, setProviderCode] = useState('');
   const [riskPct, setRiskPct] = useState(50);
   const [message, setMessage] = useState(null);
+  const [jobs, setJobs] = useState([]);
 
   const load = async () => {
     try {
@@ -16,12 +17,26 @@ export default function CopyTrading() {
       setProvider(p.provider);
       const s = await api.getCopySubscriptions();
       setSubs(s.subscriptions || []);
+      const j = await api.getCopyJobs();
+      setJobs(j.jobs || []);
     } catch {
       /* not provider yet */
     }
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    const timer = setInterval(async () => {
+      try {
+        const j = await api.getCopyJobs();
+        setJobs(j.jobs || []);
+      } catch {
+        /* ignore */
+      }
+    }, 8000);
+    return () => clearInterval(timer);
+  }, []);
 
   const enableProvider = async () => {
     const data = await api.enableCopyProvider();
@@ -95,6 +110,22 @@ export default function CopyTrading() {
       )}
 
       {message && <p className="profile-message">{message}</p>}
+
+      {jobs.length > 0 && (
+        <div className="card">
+          <h3 className="heading-md">Recent copy jobs</h3>
+          <ul className="copy-subs">
+            {jobs.map((j) => (
+              <li key={j.id}>
+                {j.trade?.symbol} · {j.trade?.contractType} · ${j.trade?.amount?.toFixed?.(2) ?? j.trade?.amount}
+                {' · '}
+                <span className={`copy-job-status copy-job-${j.status}`}>{j.status}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <p className="text-muted">Logged in as {user?.selectedAccountId || '—'}</p>
     </div>
   );
