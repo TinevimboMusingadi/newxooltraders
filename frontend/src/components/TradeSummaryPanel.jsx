@@ -1,20 +1,25 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, PanelRight } from 'lucide-react';
 import { useTradeSession } from '../context/TradeSessionContext';
 import { useTradingWs } from '../context/TradingWsContext';
+import { usePanelState } from '../hooks/usePanelState';
 
 export default function TradeSummaryPanel() {
   const [tab, setTab] = useState('summary');
-  const [collapsed, setCollapsed] = useState(false);
+  const { open: expanded, toggle: togglePanel } = usePanelState('summary-panel', true);
   const { sessionPl, wins, losses, winRate, journal, transactions, reset } = useTradeSession();
   const { balance, openContracts } = useTradingWs();
 
-  if (collapsed) {
+  if (!expanded) {
     return (
-      <aside className="trade-summary-panel collapsed">
-        <button type="button" className="summary-collapse-btn" onClick={() => setCollapsed(false)} aria-label="Expand">
+      <aside className="trade-summary-panel collapsed card">
+        <button type="button" className="summary-expand-btn" onClick={togglePanel} aria-label="Expand summary">
           <ChevronLeft size={18} />
         </button>
+        <span className="summary-collapsed-label">Summary</span>
+        <span className={`summary-collapsed-pl mono ${sessionPl >= 0 ? 'profit' : 'loss'}`}>
+          {sessionPl >= 0 ? '+' : ''}{sessionPl.toFixed(0)}
+        </span>
       </aside>
     );
   }
@@ -22,16 +27,21 @@ export default function TradeSummaryPanel() {
   return (
     <aside className="trade-summary-panel card">
       <div className="summary-header">
-        <div className="summary-tabs">
-          {['summary', 'transactions', 'journal'].map((t) => (
-            <button key={t} type="button" className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>
-              {t.charAt(0).toUpperCase() + t.slice(1)}
-            </button>
-          ))}
+        <div className="summary-title-row">
+          <PanelRight size={16} />
+          <span className="summary-title">Session</span>
         </div>
-        <button type="button" className="summary-collapse-btn" onClick={() => setCollapsed(true)} aria-label="Collapse">
+        <button type="button" className="summary-collapse-btn" onClick={togglePanel} aria-label="Collapse summary">
           <ChevronRight size={18} />
         </button>
+      </div>
+
+      <div className="summary-tabs">
+        {['summary', 'transactions', 'journal'].map((t) => (
+          <button key={t} type="button" className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>
+            {t.charAt(0).toUpperCase() + t.slice(1)}
+          </button>
+        ))}
       </div>
 
       {tab === 'summary' && (
