@@ -3,12 +3,14 @@ import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { RefreshCw, Wifi, WifiOff, ExternalLink } from 'lucide-react';
 import RealTradeConfirmModal from '../components/RealTradeConfirmModal';
-import LiveChart from '../components/LiveChart';
+import TraderLineChart from '../components/TraderLineChart';
 import TradePanel from '../components/TradePanel';
 import OpenPositions from '../components/OpenPositions';
 import MarketPicker from '../components/MarketPicker';
 import EvenOddStrip from '../components/EvenOddStrip';
+import CollapsiblePanel from '../components/CollapsiblePanel';
 import { CardSkeleton } from '../components/ui/Skeleton';
+import { usePanelState } from '../hooks/usePanelState';
 import { useAuth } from '../hooks/useAuth';
 import { useMarket } from '../context/MarketContext';
 import { useTradingWs } from '../context/TradingWsContext';
@@ -41,6 +43,8 @@ export default function Trade() {
   const [pendingTrade, setPendingTrade] = useState(null);
   const [lastTrade, setLastTrade] = useState(null);
   const [closingAll, setClosingAll] = useState(false);
+  const [growthRate, setGrowthRate] = useState(3);
+  const [tradeMode, setTradeMode] = useState('rise_fall');
   const subscribedRef = useRef(new Set());
 
   const {
@@ -185,26 +189,28 @@ export default function Trade() {
 
   const accountMode = getAccountMode(selectedAccount, accountId);
   const accountDisplayId = getAccountDisplayId(selectedAccount, accountId);
+  const { open: statsOpen, toggle: toggleStats } = usePanelState('trade-stats', true);
+  const { open: lastTradeOpen, toggle: toggleLastTrade } = usePanelState('last-trade', true);
 
   const showConnecting = accountId && !connected && !error;
 
   return (
     <>
-      <div className="page-header-block trade-page-header">
+      <div className="page-header-block trade-page-header compact">
         <div>
-          <h1 className="heading-lg">Trading Dashboard</h1>
+          <h1 className="heading-lg">Manual Trader</h1>
           <p className="text-secondary">
-            {symbol} · {accountMode.shortLabel} · {accountDisplayId}
+            {accountMode.shortLabel} · {accountDisplayId}
           </p>
         </div>
         <div className="trade-header-actions">
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => window.open(`https://charts.deriv.com/?symbol=${encodeURIComponent(symbol)}`, '_blank', 'noopener')}>
             <ExternalLink size={14} /> TradingView
           </button>
-        </div>
-        <div className={`connection-badge ${connected ? 'online' : 'offline'}`}>
-          {connected ? <Wifi size={14} /> : <WifiOff size={14} />}
-          {connected ? 'Connected' : showConnecting ? 'Connecting…' : 'Disconnected'}
+          <div className={`connection-badge ${connected ? 'online' : 'offline'}`}>
+            {connected ? <Wifi size={14} /> : <WifiOff size={14} />}
+            {connected ? 'Live' : showConnecting ? 'Connecting…' : 'Offline'}
+          </div>
         </div>
       </div>
 
@@ -234,26 +240,38 @@ export default function Trade() {
         </div>
       )}
 
-      <div className="trade-asset-header card">
-        <MarketPicker
-          symbol={symbol}
-          onSelect={selectSymbol}
-          trigger={(
-            <div className="trade-asset-trigger">
-              <strong>{currentMeta?.displayName || symbol}</strong>
-              <span className="mono">{lastPrice != null ? lastPrice.toFixed(4) : '—'}</span>
-            </div>
-          )}
-        />
-      </div>
-
       <div className="trade-layout">
-        <div className="trade-chart-section card">
-          <LiveChart symbol={symbol} onPriceUpdate={setLastPrice} />
-          <div className="trade-stats-bar">
-            <span className="text-muted">Stats</span>
-            <EvenOddStrip history={evenOddHistory} max={12} />
-          </div>
+        <div className="trade-chart-section card trader-chart-section">
+          <TraderLineChart
+            symbol={symbol}
+            onPriceUpdate={setLastPrice}
+            growthRate={growthRate}
+            showAccumulatorBand={tradeMode === 'accumulator'}
+            overlay={(
+              <MarketPicker
+                symbol={symbol}
+                onSelect={selectSymbol}
+                trigger={(
+                  <div className="trader-asset-picker card">
+                    <strong>{currentMeta?.displayName || symbol}</strong>
+                    <span className="mono trader-asset-price">
+                      {lastPrice != null ? lastPrice.toFixed(symbol?.startsWith('frx') ? 4 : 2) : '—'}
+                    </span>
+                  </div>
+                )}
+              />
+            )}
+          />
+          <CollapsiblePanel
+            title="Stats"
+            open={statsOpen}
+            onToggle={toggleStats}
+            compact
+            className="trade-stats-panel"
+            bodyClassName="trade-stats-bar"
+          >
+            <EvenOddStrip history={evenOddHistory} max={16} />
+          </CollapsiblePanel>
         </div>
         <TradePanel
           symbol={symbol}
@@ -266,20 +284,31 @@ export default function Trade() {
           trading={trading}
           lastPrice={lastPrice}
           accountMode={accountMode.mode}
+          growthRate={growthRate}
+          onGrowthRateChange={setGrowthRate}
+          mode={tradeMode}
+          onModeChange={setTradeMode}
         />
       </div>
 
       {lastTrade && (
-        <div className="last-trade-banner card">
-          <span className="text-muted">Last trade</span>
-          <strong>{lastTrade.symbol}</strong>
-          <span>{lastTrade.contractType}</span>
-          <span className="mono">Stake {Number(lastTrade.stake).toFixed(2)}</span>
-          {lastTrade.payout != null && (
-            <span className="mono profit">Payout {Number(lastTrade.payout).toFixed(2)}</span>
-          )}
-          {lastTrade.contractId && <span className="text-muted">#{lastTrade.contractId}</span>}
-        </div>
+        <CollapsiblePanel
+          title="Last trade"
+          badge={lastTrade.contractType}
+          open={lastTradeOpen}
+          onToggle={toggleLastTrade}
+          className="last-trade-panel"
+        >
+          <div className="last-trade-banner-inner">
+            <strong>{lastTrade.symbol}</strong>
+            <span>{lastTrade.contractType}</span>
+            <span className="mono">Stake {Number(lastTrade.stake).toFixed(2)}</span>
+            {lastTrade.payout != null && (
+              <span className="mono profit">Payout {Number(lastTrade.payout).toFixed(2)}</span>
+            )}
+            {lastTrade.contractId && <span className="text-muted">#{lastTrade.contractId}</span>}
+          </div>
+        </CollapsiblePanel>
       )}
 
       <OpenPositions
