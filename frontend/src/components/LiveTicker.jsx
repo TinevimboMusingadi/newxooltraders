@@ -1,7 +1,9 @@
 import { useEffect, useState, useMemo } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { filterVolatilitySymbols } from '../lib/symbolGroups';
 import { useActiveSymbols } from '../hooks/useActiveSymbols';
 import { useMarket } from '../context/MarketContext';
+import { usePanelState } from '../hooks/usePanelState';
 
 const PUBLIC_WS = 'wss://api.derivws.com/trading/v1/options/ws/public';
 
@@ -14,6 +16,7 @@ function formatPrice(symbol, quote) {
 export default function LiveTicker({ symbols: propSymbols }) {
   const { symbols: liveSymbols } = useActiveSymbols();
   const { favorites } = useMarket();
+  const { open, toggle } = usePanelState('live-ticker', true);
 
   const SYMBOLS = useMemo(() => {
     if (propSymbols?.length) return propSymbols;
@@ -31,7 +34,7 @@ export default function LiveTicker({ symbols: propSymbols }) {
   const [ticks, setTicks] = useState({});
 
   useEffect(() => {
-    if (!SYMBOLS.length) return;
+    if (!SYMBOLS.length || !open) return;
     let ws;
     let pingTimer;
     let reconnectTimer;
@@ -71,7 +74,7 @@ export default function LiveTicker({ symbols: propSymbols }) {
       clearTimeout(reconnectTimer);
       ws?.close();
     };
-  }, [SYMBOLS.map((s) => s.symbol).join(',')]);
+  }, [SYMBOLS.map((s) => s.symbol).join(','), open]);
 
   if (!SYMBOLS.length) return null;
 
@@ -86,18 +89,24 @@ export default function LiveTicker({ symbols: propSymbols }) {
   });
 
   return (
-    <div className="ticker-wrapper app-ticker">
-      <div className="ticker-content">
-        {[...items, ...items].map((item, index) => (
-          <div className="ticker-item" key={index}>
-            <span className="ticker-symbol">{item.label}</span>
-            <span className="ticker-price">{item.price}</span>
-            <span className={`ticker-change ${item.up ? 'up' : 'down'}`}>
-              {item.up ? '▲' : '▼'} {item.live ? 'Live' : '…'}
-            </span>
-          </div>
-        ))}
-      </div>
+    <div className={`ticker-wrapper app-ticker ${open ? 'open' : 'collapsed'}`}>
+      <button type="button" className="ticker-toggle" onClick={toggle} aria-expanded={open}>
+        <span className="ticker-toggle-label">Markets</span>
+        {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+      </button>
+      {open && (
+        <div className="ticker-content">
+          {[...items, ...items].map((item, index) => (
+            <div className="ticker-item" key={index}>
+              <span className="ticker-symbol">{item.label}</span>
+              <span className="ticker-price">{item.price}</span>
+              <span className={`ticker-change ${item.up ? 'up' : 'down'}`}>
+                {item.up ? '▲' : '▼'} {item.live ? 'Live' : '…'}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
