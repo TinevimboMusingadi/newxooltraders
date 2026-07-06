@@ -28,11 +28,13 @@ export default function TraderLineChart({
   onPriceUpdate,
   growthRate = 3,
   showAccumulatorBand = true,
-  height = 460,
   overlay,
+  toolbarOverlay,
 }) {
+  const stageRef = useRef(null);
   const containerRef = useRef(null);
   const chartRef = useRef(null);
+  const chartHeightRef = useRef(400);
   const seriesRef = useRef(null);
   const wsRef = useRef(null);
   const pointsRef = useRef([]);
@@ -147,7 +149,27 @@ export default function TraderLineChart({
   }, [growthRate, showAccumulatorBand, updatePriceLine, removePriceLine]);
 
   useEffect(() => {
+    if (!stageRef.current) return;
+
+    const ro = new ResizeObserver((entries) => {
+      const h = entries[0]?.contentRect.height;
+      if (h && h > 100) {
+        chartHeightRef.current = Math.floor(h);
+        if (chartRef.current) {
+          chartRef.current.applyOptions({ height: chartHeightRef.current });
+          if (priceRef.current != null) syncOverlays(priceRef.current);
+        }
+      }
+    });
+    ro.observe(stageRef.current);
+    return () => ro.disconnect();
+  }, [syncOverlays]);
+
+  useEffect(() => {
     if (!containerRef.current) return;
+
+    const initialHeight = stageRef.current?.clientHeight || 400;
+    chartHeightRef.current = initialHeight;
 
     const chart = createChart(containerRef.current, {
       layout: {
@@ -172,7 +194,7 @@ export default function TraderLineChart({
         rightOffset: 4,
       },
       width: containerRef.current.clientWidth,
-      height,
+      height: chartHeightRef.current,
     });
 
     const series = chart.addSeries(AreaSeries, {
@@ -189,8 +211,13 @@ export default function TraderLineChart({
     seriesRef.current = series;
 
     const handleResize = () => {
-      if (containerRef.current) {
-        chart.applyOptions({ width: containerRef.current.clientWidth });
+      if (containerRef.current && stageRef.current) {
+        const h = stageRef.current.clientHeight || chartHeightRef.current;
+        chartHeightRef.current = h;
+        chart.applyOptions({
+          width: containerRef.current.clientWidth,
+          height: h,
+        });
         if (priceRef.current != null) syncOverlays(priceRef.current);
       }
     };
@@ -205,7 +232,7 @@ export default function TraderLineChart({
       chart.remove();
       priceLinesRef.current = {};
     };
-  }, [isDark, height]);
+  }, [isDark, syncOverlays]);
 
   useEffect(() => {
     if (!symbol || !seriesRef.current) return;
@@ -308,8 +335,11 @@ export default function TraderLineChart({
 
   return (
     <div className="trader-line-chart">
-      <div className="trader-chart-stage">
-        {overlay}
+      <div ref={stageRef} className="trader-chart-stage">
+        <div className="trader-chart-overlays">
+          {overlay}
+          {toolbarOverlay}
+        </div>
         {currentPrice != null && (
           <div className="trader-chart-price-chip card">
             <span className="trader-chart-price mono">{formatPrice(symbol, currentPrice)}</span>
