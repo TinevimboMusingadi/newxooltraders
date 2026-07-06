@@ -1,9 +1,9 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { api } from '../lib/api';
-import { SYMBOL_CATALOG } from '../lib/symbolGroups';
+import { mapActiveSymbol } from '../lib/symbolGroups';
 
 export function useActiveSymbols() {
-  const [symbols, setSymbols] = useState(SYMBOL_CATALOG);
+  const [symbols, setSymbols] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -12,19 +12,12 @@ export function useActiveSymbols() {
     (async () => {
       try {
         const data = await api.getLiveSymbols();
-        if (!cancelled && data.symbols?.length) {
-          const mapped = data.symbols.map((s) => ({
-            symbol: s.symbol,
-            displayName: s.display_name || s.symbol,
-            category: mapMarket(s.market || s.submarket),
-            market: s.market,
-            submarket: s.submarket,
-            exchangeOpen: s.exchange_is_open,
-            pip: s.pip,
-            spotAge: s.spot_age,
-            spot: s.spot,
-          }));
-          setSymbols(mapped);
+        if (!cancelled) {
+          if (data.symbols?.length) {
+            setSymbols(data.symbols.map((s) => (s.symbol ? mapActiveSymbol(s) : s)));
+          } else {
+            setError('No symbols returned from Deriv');
+          }
         }
       } catch (err) {
         if (!cancelled) setError(err.message);
@@ -36,18 +29,6 @@ export function useActiveSymbols() {
   }, []);
 
   return { symbols, loading, error };
-}
-
-function mapMarket(m) {
-  const map = {
-    synthetic_index: 'volatility',
-    forex: 'forex',
-    cryptocurrency: 'crypto',
-    indices: 'indices',
-    commodities: 'commodities',
-    stocks: 'stocks',
-  };
-  return map[m] || m || 'other';
 }
 
 export function useRealtimePrices(symbolList) {
