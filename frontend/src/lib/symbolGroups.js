@@ -1,23 +1,3 @@
-export const SYMBOL_CATALOG = [
-  { symbol: '1HZ100V', displayName: 'Volatility 100 Index', category: 'volatility' },
-  { symbol: '1HZ75V', displayName: 'Volatility 75 Index', category: 'volatility' },
-  { symbol: '1HZ50V', displayName: 'Volatility 50 Index', category: 'volatility' },
-  { symbol: '1HZ25V', displayName: 'Volatility 25 Index', category: 'volatility' },
-  { symbol: '1HZ10V', displayName: 'Volatility 10 Index', category: 'volatility' },
-  { symbol: 'R_100', displayName: 'Volatility 100 (1s)', category: 'synthetic' },
-  { symbol: 'R_75', displayName: 'Volatility 75 (1s)', category: 'synthetic' },
-  { symbol: 'R_50', displayName: 'Volatility 50 (1s)', category: 'synthetic' },
-  { symbol: 'R_25', displayName: 'Volatility 25 (1s)', category: 'synthetic' },
-  { symbol: 'R_10', displayName: 'Volatility 10 (1s)', category: 'synthetic' },
-  { symbol: 'frxEURUSD', displayName: 'EUR/USD', category: 'forex' },
-  { symbol: 'frxGBPUSD', displayName: 'GBP/USD', category: 'forex' },
-  { symbol: 'frxUSDJPY', displayName: 'USD/JPY', category: 'forex' },
-  { symbol: 'cryBTCUSD', displayName: 'BTC/USD', category: 'crypto' },
-  { symbol: 'cryETHUSD', displayName: 'ETH/USD', category: 'crypto' },
-  { symbol: 'OTC_DJI', displayName: 'US Index', category: 'indices' },
-  { symbol: 'OTC_GDAXI', displayName: 'Germany Index', category: 'indices' },
-];
-
 export const CATEGORIES = [
   { id: 'all', label: 'All' },
   { id: 'volatility', label: 'Volatility' },
@@ -25,7 +5,37 @@ export const CATEGORIES = [
   { id: 'forex', label: 'Forex' },
   { id: 'crypto', label: 'Crypto' },
   { id: 'indices', label: 'Indices' },
+  { id: 'commodities', label: 'Commodities' },
+  { id: 'stocks', label: 'Stocks' },
 ];
+
+export function mapActiveSymbol(s) {
+  return {
+    symbol: s.symbol,
+    displayName: s.display_name || s.displayName || s.symbol,
+    category: mapCategory(s.market),
+    market: s.market,
+    submarket: s.submarket,
+    marketDisplay: s.market_display_name || s.marketDisplay,
+    submarketDisplay: s.submarket_display_name || s.submarketDisplay,
+    exchangeOpen: s.exchange_is_open ?? s.exchangeOpen,
+    pip: s.pip,
+    spot: s.spot,
+    spotAge: s.spot_age ?? s.spotAge,
+  };
+}
+
+function mapCategory(market) {
+  const map = {
+    synthetic_index: 'volatility',
+    forex: 'forex',
+    cryptocurrency: 'crypto',
+    indices: 'indices',
+    commodities: 'commodities',
+    stocks: 'stocks',
+  };
+  return map[market] || market || 'other';
+}
 
 export function groupSymbols(symbols) {
   return symbols.reduce((acc, s) => {
@@ -34,4 +44,29 @@ export function groupSymbols(symbols) {
     acc[cat].push(s);
     return acc;
   }, {});
+}
+
+export function buildCategoryTree(symbols) {
+  const tree = {};
+  for (const s of symbols) {
+    const market = s.market || 'other';
+    const sub = s.submarket || 'default';
+    if (!tree[market]) tree[market] = { id: market, label: s.marketDisplay || market, submarkets: {} };
+    if (!tree[market].submarkets[sub]) {
+      tree[market].submarkets[sub] = { id: sub, label: s.submarketDisplay || sub, symbols: [] };
+    }
+    tree[market].submarkets[sub].symbols.push(s);
+  }
+  return Object.values(tree).map((m) => ({
+    ...m,
+    submarkets: Object.values(m.submarkets),
+  }));
+}
+
+export function filterVolatilitySymbols(symbols) {
+  return symbols.filter(
+    (s) => s.market === 'synthetic_index'
+      || s.category === 'volatility'
+      || /^R_|^1HZ/.test(s.symbol),
+  );
 }
