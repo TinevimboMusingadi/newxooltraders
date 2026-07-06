@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { TrendingDown, TrendingUp, Zap, Loader2, Search } from 'lucide-react';
+import { TrendingDown, TrendingUp, Loader2, Search } from 'lucide-react';
 import { DEFAULT_DURATION } from '../lib/tradeDurations';
 import { api } from '../lib/api';
 import { useMarket } from '../context/MarketContext';
@@ -30,19 +30,27 @@ export default function TradePanel({
   lastPrice,
   accountMode,
   getProposal,
+  growthRate: growthRateProp,
+  onGrowthRateChange,
+  mode: modeProp,
+  onModeChange,
 }) {
   const { selectSymbol } = useMarket();
   const { symbols } = useActiveSymbols();
   const [stake, setStake] = useState(5);
   const [duration, setDuration] = useState(DEFAULT_DURATION);
-  const [mode, setMode] = useState('rise_fall');
+  const [modeLocal, setModeLocal] = useState('rise_fall');
+  const mode = modeProp ?? modeLocal;
+  const setMode = onModeChange ?? setModeLocal;
   const activeMode = MODES.find((m) => m.id === mode) || MODES[0];
   const { allowedDurations, defaultDuration, growthRates, maxPayout, maxTicks } = useContractsFor(
     symbol,
     activeMode?.types || [],
   );
   const [barrier, setBarrier] = useState(5);
-  const [growthRate, setGrowthRate] = useState(3);
+  const [growthRateLocal, setGrowthRateLocal] = useState(3);
+  const growthRate = growthRateProp ?? growthRateLocal;
+  const setGrowthRate = onGrowthRateChange ?? setGrowthRateLocal;
   const [multiplier, setMultiplier] = useState(100);
   const [availableModes, setAvailableModes] = useState(MODES.slice(0, 3));
   const [status, setStatus] = useState(null);
@@ -174,7 +182,7 @@ export default function TradePanel({
   return (
     <div className="trade-panel card">
       <div className="trade-panel-header">
-        <h3 className="heading-md">Trade</h3>
+        <h3 className="heading-md">{mode === 'accumulator' ? 'Accumulators' : 'Trade'}</h3>
         <span className={`status-dot ${connected ? 'online' : 'offline'}`}>
           {connected ? 'Live' : 'Connecting…'}
         </span>
@@ -379,7 +387,7 @@ export default function TradePanel({
       {mode === 'accumulator' && (
         <div className="trade-actions">
           <TradeBtn variant="primary" actionKey="ACCU" onClick={handleAccumulator}>
-            <Zap size={16} /> Buy Accumulator
+            Buy
           </TradeBtn>
         </div>
       )}
