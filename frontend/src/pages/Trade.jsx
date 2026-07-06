@@ -1,14 +1,20 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { RefreshCw, Wifi, WifiOff, ExternalLink } from 'lucide-react';
 import RealTradeConfirmModal from '../components/RealTradeConfirmModal';
 import LiveChart from '../components/LiveChart';
 import TradePanel from '../components/TradePanel';
 import OpenPositions from '../components/OpenPositions';
+import MarketPicker from '../components/MarketPicker';
+import EvenOddStrip from '../components/EvenOddStrip';
 import { CardSkeleton } from '../components/ui/Skeleton';
 import { useAuth } from '../hooks/useAuth';
 import { useMarket } from '../context/MarketContext';
 import { useTradingWs } from '../context/TradingWsContext';
+import { useDigitStream } from '../hooks/useDigitStream';
+import { useTradeSession } from '../context/TradeSessionContext';
+import { useActiveSymbols } from '../hooks/useActiveSymbols';
 import { api } from '../lib/api';
 import {
   getAccountDisplayId,
@@ -19,7 +25,13 @@ import {
 
 export default function Trade() {
   const { user, refresh } = useAuth();
-  const { selectedSymbol } = useMarket();
+  const { selectedSymbol, selectSymbol } = useMarket();
+  const [params] = useSearchParams();
+  const symbol = params.get('symbol') || selectedSymbol;
+  const { symbols } = useActiveSymbols();
+  const currentMeta = symbols.find((s) => s.symbol === symbol);
+  const { evenOddHistory } = useDigitStream(symbol);
+  const { recordTrade } = useTradeSession();
   const accountId = user?.selectedAccountId;
   const selectedAccount = user?.accounts?.find((a) => a.accountId === accountId);
   const accountError = user?.lastAccountError;
@@ -42,6 +54,16 @@ export default function Trade() {
     updateContract,
     subscribeOpenContract,
   } = useTradingWs();
+
+  useEffect(() => {
+    if (params.get('symbol') && params.get('symbol') !== selectedSymbol) {
+      selectSymbol(params.get('symbol'));
+    }
+  }, [params, selectedSymbol, selectSymbol]);
+
+  useEffect(() => {
+    setLastPrice(null);
+  }, [symbol]);
 
   useEffect(() => {
     if (!connected || !openContracts?.length) return;
@@ -76,6 +98,7 @@ export default function Trade() {
           contractId,
           at: Date.now(),
         });
+        recordTrade({ message: 'Contract bought', type: 'trade', symbol: params.symbol, contractType: params.contractType });
         toast.success(`Trade opened: ${params.symbol} ${params.contractType}`, {
           description: `Stake: ${askPrice} ${balance?.currency || 'USD'}`,
         });
@@ -171,8 +194,13 @@ export default function Trade() {
         <div>
           <h1 className="heading-lg">Trading Dashboard</h1>
           <p className="text-secondary">
-            {selectedSymbol} · {accountMode.shortLabel} · {accountDisplayId}
+            {symbol} · {accountMode.shortLabel} · {accountDisplayId}
           </p>
+        </div>
+        <div className="trade-header-actions">
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => window.open(`https://charts.deriv.com/?symbol=${encodeURIComponent(symbol)}`, '_blank', 'noopener')}>
+            <ExternalLink size={14} /> TradingView
+          </button>
         </div>
         <div className={`connection-badge ${connected ? 'online' : 'offline'}`}>
           {connected ? <Wifi size={14} /> : <WifiOff size={14} />}
@@ -206,12 +234,29 @@ export default function Trade() {
         </div>
       )}
 
+      <div className="trade-asset-header card">
+        <MarketPicker
+          symbol={symbol}
+          onSelect={selectSymbol}
+          trigger={(
+            <div className="trade-asset-trigger">
+              <strong>{currentMeta?.displayName || symbol}</strong>
+              <span className="mono">{lastPrice != null ? lastPrice.toFixed(4) : '—'}</span>
+            </div>
+          )}
+        />
+      </div>
+
       <div className="trade-layout">
         <div className="trade-chart-section card">
-          <LiveChart symbol={selectedSymbol} onPriceUpdate={setLastPrice} />
+          <LiveChart symbol={symbol} onPriceUpdate={setLastPrice} />
+          <div className="trade-stats-bar">
+            <span className="text-muted">Stats</span>
+            <EvenOddStrip history={evenOddHistory} max={12} />
+          </div>
         </div>
         <TradePanel
-          symbol={selectedSymbol}
+          symbol={symbol}
           currency={selectedAccount?.currency || balance?.currency || 'USD'}
           connected={connected}
           balance={balance}
