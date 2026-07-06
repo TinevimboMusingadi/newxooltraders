@@ -38,7 +38,14 @@ export function createStrategyRunner({ onProposal, onBuy, onLog }) {
         const stake = config.useMartingale
           ? config.baseStake * Math.pow(config.multiplier, stats.losses)
           : config.baseStake;
-        const proposal = await onProposal({ ...signal, amount: stake });
+        const contractType = config.contractType || 'CALL';
+        const proposal = await onProposal({
+          ...signal,
+          amount: stake,
+          contractType,
+          duration: config.durationTicks || config.durationMin || 5,
+          durationUnit: config.durationTicks ? 't' : 'm',
+        });
         const id = proposal.proposal?.id;
         const price = proposal.proposal?.ask_price;
         if (!id) throw new Error('No proposal');
@@ -67,4 +74,51 @@ export const BOT_PRESETS = [
     name: 'Apex Martingale',
     config: { baseStake: 1, useMartingale: true, multiplier: 2, takeProfit: 50, stopLoss: 25, maxConsecutiveLosses: 5 },
   },
+  {
+    id: 'digit-even',
+    name: 'Digit Even Hunter',
+    config: { baseStake: 0.5, useMartingale: true, multiplier: 1.2, takeProfit: 20, stopLoss: 15, maxConsecutiveLosses: 4, contractType: 'DIGITEVEN', durationTicks: 1 },
+  },
+  {
+    id: 'volatility-call',
+    name: 'Volatility Rise',
+    config: { baseStake: 1, useMartingale: false, multiplier: 2, takeProfit: 30, stopLoss: 20, maxConsecutiveLosses: 3, contractType: 'CALL', durationMin: 1 },
+  },
 ];
+
+export function evaluateAutomatedRule(type, rule, stream) {
+  if (type === 'even_pct') {
+    const pct = rule.side === 'DIGITEVEN' ? stream.evenPct : stream.oddPct;
+    return pct >= rule.threshold;
+  }
+  if (type === 'over_under_digits') {
+    const digits = (stream.evenOddHistory || []).slice(-rule.lookback);
+    if (digits.length < rule.lookback) return false;
+    return digits.every(() => stream.lastDigit != null && stream.lastDigit > rule.compareDigit);
+  }
+  return false;
+}
+
+export function createAutomatedRunner({ getProposal, buyContract, onTrade }) {
+  return {
+    async execute({ symbol, contractType, stake, ticks, barrier, currency }) {
+      const params = {
+        contractType,
+        amount: stake,
+        duration: ticks,
+        durationUnit: 't',
+        symbol,
+        currency,
+      };
+      if (barrier != null && !['DIGITEVEN', 'DIGITODD'].includes(contractType)) {
+        params.barrier = barrier;
+      }
+      const proposal = await getProposal(params);
+      const id = proposal.proposal?.id;
+      const price = proposal.proposal?.ask_price;
+      if (!id || price == null) throw new Error('No proposal');
+      await buyContract(String(id), price);
+      onTrade?.();
+    },
+  };
+}
