@@ -14,6 +14,7 @@ import marketsRoutes from './routes/markets.js';
 import botsRoutes from './routes/bots.js';
 import copyRoutes from './routes/copy.js';
 import historyRoutes from './routes/history.js';
+import automationRoutes from './routes/automation.js';
 
 if (pool) {
   import('./db/queries/platform.js').then((m) => m.ensureTables().catch(console.error));
@@ -51,6 +52,7 @@ app.use('/api/markets', apiLimiter, marketsRoutes);
 app.use('/api/bots', apiLimiter, botsRoutes);
 app.use('/api/copy', tradeLimiter, copyRoutes);
 app.use('/api/history', apiLimiter, historyRoutes);
+app.use('/api/automation', apiLimiter, automationRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);
