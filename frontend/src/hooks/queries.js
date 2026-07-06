@@ -12,8 +12,25 @@ export function useAccounts() {
 export function useSymbols() {
   return useQuery({
     queryKey: ['symbols'],
-    queryFn: () => api.getSymbols(),
+    queryFn: () => api.getLiveSymbols(),
     staleTime: 5 * 60_000,
+  });
+}
+
+export function useMarketCategories() {
+  return useQuery({
+    queryKey: ['marketCategories'],
+    queryFn: () => api.getMarketCategories(),
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useLiveSignals() {
+  return useQuery({
+    queryKey: ['liveSignals'],
+    queryFn: () => api.getLiveSignals(),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
   });
 }
 
