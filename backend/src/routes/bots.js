@@ -57,4 +57,21 @@ router.delete('/configs/:id', async (req, res) => {
   }
 });
 
+const memStrategies = new Map();
+
+router.get('/strategies', async (req, res) => {
+  const key = sessionKey(req);
+  const list = [...memStrategies.values()].filter((s) => s.userKey === key);
+  res.json({ strategies: list });
+});
+
+router.post('/strategies', async (req, res) => {
+  const key = sessionKey(req);
+  const { name, symbol, xml } = req.body;
+  const id = randomBytes(6).toString('hex');
+  const entry = { id, userKey: key, name, symbol, xml, updatedAt: new Date().toISOString() };
+  memStrategies.set(id, entry);
+  res.json({ strategy: entry });
+});
+
 export default router;
