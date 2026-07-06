@@ -36,7 +36,9 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ accountId }),
     }),
-  getSymbols: () => request('/api/markets/symbols'),
+  getSymbols: () => request('/api/markets/symbols/live'),
+  getMarketCategories: () => request('/api/markets/categories'),
+  getLiveSignals: () => request('/api/markets/signals/live'),
   getBotConfigs: () => request('/api/bots/configs'),
   saveBotConfig: (config) =>
     request('/api/bots/configs', { method: 'POST', body: JSON.stringify(config) }),
@@ -78,6 +80,11 @@ export const api = {
   },
   getContractsFor: (symbol) => request(`/api/markets/contracts/${symbol}`),
   getLiveSymbols: () => request('/api/markets/symbols/live'),
+  getAutomationStrategies: () => request('/api/automation/strategies'),
+  startAutomation: (body) => request('/api/automation/start', { method: 'POST', body: JSON.stringify(body) }),
+  stopAutomation: (body) => request('/api/automation/stop', { method: 'POST', body: JSON.stringify(body) }),
+  getBotStrategies: () => request('/api/bots/strategies'),
+  saveBotStrategy: (body) => request('/api/bots/strategies', { method: 'POST', body: JSON.stringify(body) }),
 };
 
 export const authUrls = {
