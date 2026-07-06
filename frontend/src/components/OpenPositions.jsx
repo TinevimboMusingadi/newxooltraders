@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Clock, TrendingUp, TrendingDown } from 'lucide-react';
+import CollapsiblePanel from './CollapsiblePanel';
+import { usePanelState } from '../hooks/usePanelState';
 
 function formatTimeLeft(expiryTime) {
   if (!expiryTime) return null;
@@ -32,12 +34,21 @@ export default function OpenPositions({
   closingAll,
 }) {
   const list = contracts || [];
+  const { open, toggle, setOpen } = usePanelState('open-positions', true);
+
+  useEffect(() => {
+    if (list.length > 0) setOpen(true);
+  }, [list.length, setOpen]);
 
   return (
-    <div className="open-positions card">
-      <div className="open-positions-header">
-        <h3 className="heading-sm">Open Positions ({list.length})</h3>
-        {list.length > 1 && onCloseAll && (
+    <CollapsiblePanel
+      title="Open Positions"
+      badge={list.length}
+      open={open}
+      onToggle={toggle}
+      className="open-positions"
+      actions={
+        list.length > 1 && onCloseAll ? (
           <button
             type="button"
             className="btn btn-danger btn-xs"
@@ -46,9 +57,9 @@ export default function OpenPositions({
           >
             {closingAll ? 'Closing…' : 'Close All'}
           </button>
-        )}
-      </div>
-
+        ) : null
+      }
+    >
       {list.length === 0 ? (
         <p className="text-muted open-positions-empty">No open positions. Place a trade to see live P/L here.</p>
       ) : (
@@ -65,7 +76,7 @@ export default function OpenPositions({
           ))}
         </div>
       )}
-    </div>
+    </CollapsiblePanel>
   );
 }
 
@@ -75,7 +86,6 @@ function PositionCard({ contract, onSell, onUpdateTP, onUpdateSL, currency }) {
   const [tp, setTp] = useState('');
   const [sl, setSl] = useState('');
   const [selling, setSelling] = useState(false);
-  const [flash, setFlash] = useState('');
 
   const pl = contract.profit != null ? Number(contract.profit) : null;
   const plClass = pl != null ? (pl >= 0 ? 'profit' : 'loss') : '';
@@ -93,7 +103,7 @@ function PositionCard({ contract, onSell, onUpdateTP, onUpdateSL, currency }) {
   };
 
   return (
-    <div className={`position-card ${flash}`} data-tick={flash}>
+    <div className="position-card">
       <div className="position-card-top">
         <div>
           <span className="position-symbol">{contract.display_name || contract.symbol || '—'}</span>
