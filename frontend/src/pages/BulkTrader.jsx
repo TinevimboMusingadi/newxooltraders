@@ -1,17 +1,24 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import DigitHeatmap from '../components/DigitHeatmap';
+import { Cpu } from 'lucide-react';
+import MarketPicker from '../components/MarketPicker';
+import EvenOddStrip, { DigitCircles } from '../components/EvenOddStrip';
 import RealTradeConfirmModal from '../components/RealTradeConfirmModal';
 import { useAuth } from '../hooks/useAuth';
 import { useMarket } from '../context/MarketContext';
 import { useTradingWs } from '../context/TradingWsContext';
-import { computeDigitDistribution, fetchTickHistory } from '../lib/digitsEngine';
+import { useDigitStream } from '../hooks/useDigitStream';
+import { useContractsFor } from '../hooks/useContractsFor';
+import { useTradingFooter } from '../context/TradingFooterContext';
+import { useTradeSession } from '../context/TradeSessionContext';
+import { scanMarkets, rankSignals } from '../lib/digitsEngine';
+import { filterVolatilitySymbols } from '../lib/symbolGroups';
+import { useActiveSymbols } from '../hooks/useActiveSymbols';
 import {
   hasRealTradeConfirmation,
   isDemoAccount,
   setRealTradeConfirmation,
 } from '../lib/accountDisplay';
-import { DEFAULT_DURATION, TRADE_DURATIONS } from '../lib/tradeDurations';
 
 const CONTRACT_TYPES = [
   { id: 'DIGITEVEN', label: 'Even' },
@@ -28,22 +35,24 @@ export default function BulkTrader() {
   const accountId = user?.selectedAccountId;
   const selectedAccount = user?.accounts?.find((a) => a.accountId === accountId);
 
-  const [stake, setStake] = useState(1);
-  const [count, setCount] = useState(3);
+  const [stake, setStake] = useState(0.5);
+  const [ticks, setTicks] = useState(1);
+  const [count, setCount] = useState(1);
   const [contractType, setContractType] = useState(params.get('type') || 'DIGITEVEN');
   const [barrier, setBarrier] = useState(Number(params.get('barrier') || 5));
-  const [duration, setDuration] = useState(DEFAULT_DURATION);
-  const [dist, setDist] = useState(null);
+  const [lookback, setLookback] = useState(1000);
   const [log, setLog] = useState([]);
   const [running, setRunning] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [scanning, setScanning] = useState(false);
 
   const { connected, queueBulkTrades } = useTradingWs();
-
-  const loadDigits = async () => {
-    const quotes = await fetchTickHistory(symbol, 1000);
-    setDist(computeDigitDistribution(quotes));
-  };
+  const { quote, distribution, evenOddHistory } = useDigitStream(symbol);
+  const { allowedDurations, defaultDuration } = useContractsFor(symbol, [contractType]);
+  const duration = allowedDurations.find((d) => d.unit === 't') || defaultDuration;
+  const { symbols } = useActiveSymbols();
+  const { setRunHandler, clearRunHandler } = useTradingFooter();
+  const { recordTrade } = useTradeSession();
 
   const buildTrades = useCallback(() => {
     const trades = [];
@@ -51,8 +60,8 @@ export default function BulkTrader() {
       trades.push({
         contractType,
         amount: stake,
-        duration: duration.value,
-        durationUnit: duration.unit,
+        duration: ticks,
+        durationUnit: 't',
         symbol,
         currency: selectedAccount?.currency || 'USD',
         ...(contractType.includes('DIGIT') && contractType !== 'DIGITEVEN' && contractType !== 'DIGITODD'
@@ -61,99 +70,106 @@ export default function BulkTrader() {
       });
     }
     return trades;
-  }, [count, contractType, stake, symbol, selectedAccount, barrier, duration]);
+  }, [count, contractType, stake, symbol, selectedAccount, barrier, ticks]);
 
-  const executeBulk = async () => {
+  const executeBulk = useCallback(async (typeOverride) => {
+    const ct = typeOverride || contractType;
     setRunning(true);
     setLog([]);
     try {
-      const trades = buildTrades();
-      const results = await queueBulkTrades(trades, { delayMs: 1000, maxConcurrent: 2 });
+      const trades = buildTrades().map((t) => ({ ...t, contractType: ct }));
+      const results = await queueBulkTrades(trades, { delayMs: 800, maxConcurrent: 2 });
       setLog(results.map((r, i) => `#${i + 1} contract ${r.buy?.contract_id || 'ok'}`));
+      recordTrade({ message: 'Contract bought', type: 'bulk', symbol, contractType: ct });
     } catch (err) {
       setLog([`Error: ${err.message}`]);
     } finally {
       setRunning(false);
     }
-  };
+  }, [buildTrades, contractType, queueBulkTrades, recordTrade, symbol]);
 
-  const handleRun = () => {
+  const handleRun = useCallback((typeOverride) => {
     if (selectedAccount && !isDemoAccount(selectedAccount) && !hasRealTradeConfirmation()) {
       setShowConfirm(true);
       return;
     }
-    executeBulk();
+    executeBulk(typeOverride);
+  }, [selectedAccount, executeBulk]);
+
+  useEffect(() => {
+    setRunHandler(() => handleRun(), 'Run Bulk');
+    return () => clearRunHandler();
+  }, [handleRun, setRunHandler, clearRunHandler]);
+
+  const runAiScanner = async () => {
+    setScanning(true);
+    try {
+      const vol = filterVolatilitySymbols(symbols).map((s) => s.symbol).slice(0, 8);
+      const results = await scanMarkets(vol, { depth: lookback, pattern: 'O1U8' });
+      const best = rankSignals(results, 50)[0];
+      if (best) {
+        selectSymbol(best.symbol);
+        setContractType(best.analysis.direction);
+        setBarrier(best.analysis.barrier);
+      }
+    } finally {
+      setScanning(false);
+    }
   };
 
-  const needsBarrier = useMemo(
-    () => contractType === 'DIGITOVER' || contractType === 'DIGITUNDER',
-    [contractType],
-  );
+  const needsBarrier = contractType === 'DIGITOVER' || contractType === 'DIGITUNDER';
+  const liveDist = distribution;
 
   return (
     <div className="bulk-page">
       <div className="page-header-block">
         <h1 className="heading-lg">Bulk Trader</h1>
-        <p className="text-secondary">Even/Odd and digit contracts with multi-stake execution.</p>
+        <p className="text-secondary">Live digit analysis with even/odd bulk execution.</p>
       </div>
 
-      <div className="bulk-grid">
-        <div className="card bulk-controls">
-          <label>
-            Symbol
-            <input value={symbol} onChange={(e) => selectSymbol(e.target.value)} className="trade-input" />
-          </label>
-          <label>
-            Contract
-            <select value={contractType} onChange={(e) => setContractType(e.target.value)}>
-              {CONTRACT_TYPES.map((c) => (
-                <option key={c.id} value={c.id}>{c.label}</option>
-              ))}
-            </select>
-          </label>
-          {needsBarrier && (
-            <label>
-              Barrier
-              <input type="number" min={0} max={9} value={barrier} onChange={(e) => setBarrier(Number(e.target.value))} />
-            </label>
-          )}
-          <label>
-            Stake $
-            <input type="number" min={1} max={100} value={stake} onChange={(e) => setStake(Number(e.target.value))} />
-          </label>
-          <label>
-            Duration
-            <select
-              value={`${duration.value}${duration.unit}`}
-              onChange={(e) => {
-                const d = TRADE_DURATIONS.find((x) => `${x.value}${x.unit}` === e.target.value);
-                if (d) setDuration(d);
-              }}
-            >
-              {TRADE_DURATIONS.map((d) => (
-                <option key={`${d.value}${d.unit}`} value={`${d.value}${d.unit}`}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Count (max 10)
-            <input type="number" min={1} max={10} value={count} onChange={(e) => setCount(Number(e.target.value))} />
-          </label>
-          <button type="button" className="btn btn-secondary" onClick={loadDigits}>
-            Load digit distribution
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            disabled={!connected || running}
-            onClick={handleRun}
-          >
-            {running ? 'Running…' : `Run ${count} trades`}
-          </button>
-        </div>
-        <DigitHeatmap distribution={dist} symbol={symbol} />
+      <div className="bulk-toolbar card">
+        <MarketPicker symbol={symbol} onSelect={selectSymbol} />
+        <label>
+          Trade type
+          <select value={contractType} onChange={(e) => setContractType(e.target.value)}>
+            {CONTRACT_TYPES.map((c) => (
+              <option key={c.id} value={c.id}>{c.label}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Lookback ticks
+          <input type="number" min={100} max={5000} value={lookback} onChange={(e) => setLookback(Number(e.target.value))} />
+        </label>
+        <button type="button" className="btn btn-secondary ai-scanner-btn" disabled={scanning} onClick={runAiScanner}>
+          <Cpu size={14} /> {scanning ? 'Scanning…' : 'AI Scanner'}
+        </button>
+      </div>
+
+      <div className="bulk-tick-display card">
+        <span className="text-muted">Current tick</span>
+        <strong className="bulk-tick-value mono">{quote != null ? quote.toFixed(2) : '—'}</strong>
+      </div>
+
+      <DigitCircles distribution={liveDist} />
+      <EvenOddStrip history={evenOddHistory} />
+
+      <div className="bulk-bottom card">
+        <label>Ticks <input type="number" min={1} max={10} value={ticks} onChange={(e) => setTicks(Number(e.target.value))} /></label>
+        <label>Stake <input type="number" min={0.35} step={0.5} value={stake} onChange={(e) => setStake(Number(e.target.value))} /></label>
+        <label>Bulk count <input type="number" min={1} max={10} value={count} onChange={(e) => setCount(Number(e.target.value))} /></label>
+        {needsBarrier && (
+          <label>Barrier <input type="number" min={0} max={9} value={barrier} onChange={(e) => setBarrier(Number(e.target.value))} /></label>
+        )}
+      </div>
+
+      <div className="bulk-action-row">
+        <button type="button" className="btn btn-buy bulk-action-even" disabled={!connected || running} onClick={() => handleRun('DIGITEVEN')}>
+          Even
+        </button>
+        <button type="button" className="btn btn-sell bulk-action-odd" disabled={!connected || running} onClick={() => handleRun('DIGITODD')}>
+          Odd
+        </button>
       </div>
 
       {log.length > 0 && (
