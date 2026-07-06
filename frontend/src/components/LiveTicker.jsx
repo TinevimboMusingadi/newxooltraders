@@ -1,14 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import { filterVolatilitySymbols } from '../lib/symbolGroups';
+import { useActiveSymbols } from '../hooks/useActiveSymbols';
+import { useMarket } from '../context/MarketContext';
 
 const PUBLIC_WS = 'wss://api.derivws.com/trading/v1/options/ws/public';
-const PING_INTERVAL_MS = 45_000;
-
-const SYMBOLS = [
-  { symbol: '1HZ100V', label: 'Volatility 100' },
-  { symbol: '1HZ75V', label: 'Volatility 75' },
-  { symbol: 'frxEURUSD', label: 'EUR/USD' },
-  { symbol: 'cryBTCUSD', label: 'BTC/USD' },
-];
 
 function formatPrice(symbol, quote) {
   if (symbol.startsWith('frx')) return quote.toFixed(4);
@@ -16,32 +11,42 @@ function formatPrice(symbol, quote) {
   return quote.toFixed(2);
 }
 
-export default function LiveTicker() {
-  const [ticks, setTicks] = useState(() =>
-    Object.fromEntries(SYMBOLS.map((s) => [s.symbol, { quote: null, up: true }])),
-  );
+export default function LiveTicker({ symbols: propSymbols }) {
+  const { symbols: liveSymbols } = useActiveSymbols();
+  const { favorites } = useMarket();
+
+  const SYMBOLS = useMemo(() => {
+    if (propSymbols?.length) return propSymbols;
+    const vol = filterVolatilitySymbols(liveSymbols).slice(0, 5);
+    const fav = favorites.slice(0, 3).map((sym) => liveSymbols.find((s) => s.symbol === sym)).filter(Boolean);
+    const merged = [...fav, ...vol];
+    const seen = new Set();
+    return merged.filter((s) => {
+      if (seen.has(s.symbol)) return false;
+      seen.add(s.symbol);
+      return true;
+    }).slice(0, 8).map((s) => ({ symbol: s.symbol, label: s.displayName || s.symbol }));
+  }, [propSymbols, liveSymbols, favorites]);
+
+  const [ticks, setTicks] = useState({});
 
   useEffect(() => {
+    if (!SYMBOLS.length) return;
     let ws;
     let pingTimer;
     let reconnectTimer;
     let closed = false;
-    let reqId = 1;
 
     function connect() {
       ws = new WebSocket(PUBLIC_WS);
-
       ws.onopen = () => {
-        for (const { symbol } of SYMBOLS) {
-          ws.send(JSON.stringify({ ticks: symbol, subscribe: 1, req_id: reqId++ }));
-        }
+        SYMBOLS.forEach(({ symbol }) => {
+          ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
+        });
         pingTimer = setInterval(() => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ ping: 1, req_id: reqId++ }));
-          }
-        }, PING_INTERVAL_MS);
+          if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ ping: 1 }));
+        }, 45000);
       };
-
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
         if (data.msg_type === 'tick' && data.tick) {
@@ -49,12 +54,10 @@ export default function LiveTicker() {
           setTicks((prev) => {
             const old = prev[sym]?.quote;
             const quote = data.tick.quote;
-            const up = old == null ? true : quote >= old;
-            return { ...prev, [sym]: { quote, up } };
+            return { ...prev, [sym]: { quote, up: old == null ? true : quote >= old } };
           });
         }
       };
-
       ws.onclose = () => {
         clearInterval(pingTimer);
         if (!closed) reconnectTimer = setTimeout(connect, 4000);
@@ -62,34 +65,35 @@ export default function LiveTicker() {
     }
 
     connect();
-
     return () => {
       closed = true;
       clearInterval(pingTimer);
       clearTimeout(reconnectTimer);
       ws?.close();
     };
-  }, []);
+  }, [SYMBOLS.map((s) => s.symbol).join(',')]);
+
+  if (!SYMBOLS.length) return null;
 
   const items = SYMBOLS.map(({ symbol, label }) => {
     const t = ticks[symbol];
     return {
       label,
-      price: t?.quote != null ? formatPrice(symbol, t.quote) : '—',
+      price: t?.quote != null ? formatPrice(symbol, t.quote) : '…',
       up: t?.up ?? true,
       live: t?.quote != null,
     };
   });
 
   return (
-    <div className="ticker-wrapper">
+    <div className="ticker-wrapper app-ticker">
       <div className="ticker-content">
         {[...items, ...items].map((item, index) => (
           <div className="ticker-item" key={index}>
             <span className="ticker-symbol">{item.label}</span>
-            <span className="ticker-price">{item.live ? item.price : '…'}</span>
+            <span className="ticker-price">{item.price}</span>
             <span className={`ticker-change ${item.up ? 'up' : 'down'}`}>
-              {item.up ? '▲' : '▼'} Live
+              {item.up ? '▲' : '▼'} {item.live ? 'Live' : '…'}
             </span>
           </div>
         ))}
