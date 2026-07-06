@@ -5,6 +5,7 @@ import asset4 from '../assets/asset4.svg';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../context/ThemeContext';
 import AuthCTA from '../components/AuthCTA';
+import AccountSwitcher from '../components/AccountSwitcher';
 import { getAccountMode } from '../lib/accountDisplay';
 
 export default function Navbar({ variant = 'landing' }) {
@@ -30,7 +31,10 @@ export default function Navbar({ variant = 'landing' }) {
   const navContent = (
     <>
       {variant === 'app' && isAuthenticated && (
-        <Link to="/profile" className="nav-link" onClick={() => setMobileOpen(false)}>Profile</Link>
+        <>
+          <Link to="/history" className="nav-link" onClick={() => setMobileOpen(false)}>Reports</Link>
+          <AccountSwitcher />
+        </>
       )}
       {variant === 'landing' && (
         <>
@@ -44,20 +48,20 @@ export default function Navbar({ variant = 'landing' }) {
       <button type="button" className="theme-toggle-btn" onClick={toggleTheme} aria-label="Toggle theme">
         {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
       </button>
-      {isAuthenticated ? (
+      {isAuthenticated && variant !== 'app' ? (
         <button type="button" className="btn btn-secondary nav-btn" onClick={() => { logout(); setMobileOpen(false); }}>
           Log Out
         </button>
-      ) : (
+      ) : !isAuthenticated ? (
         <AuthCTA variant="nav" />
-      )}
+      ) : null}
     </>
   );
 
   return (
     <nav className={`navbar ${variant === 'app' || isScrolled ? 'scrolled' : ''}`}>
       <div className="container">
-        <Link to="/" className="logo" onClick={() => setMobileOpen(false)}>
+        <Link to={isAuthenticated ? '/dashboard' : '/'} className="logo" onClick={() => setMobileOpen(false)}>
           <img src={asset4} alt="Newxool Traders Logo" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
           newxool<span>traders</span>
         </Link>
