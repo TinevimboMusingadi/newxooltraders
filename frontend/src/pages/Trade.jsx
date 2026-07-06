@@ -1,7 +1,7 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { RefreshCw, Wifi, WifiOff, ExternalLink } from 'lucide-react';
+import { RefreshCw, Wifi, WifiOff, ExternalLink, ChevronDown } from 'lucide-react';
 import RealTradeConfirmModal from '../components/RealTradeConfirmModal';
 import TraderLineChart from '../components/TraderLineChart';
 import TradePanel from '../components/TradePanel';
@@ -19,7 +19,6 @@ import { useTradeSession } from '../context/TradeSessionContext';
 import { useActiveSymbols } from '../hooks/useActiveSymbols';
 import { api } from '../lib/api';
 import {
-  getAccountDisplayId,
   getAccountMode,
   hasRealTradeConfirmation,
   isDemoAccount,
@@ -188,7 +187,6 @@ export default function Trade() {
   );
 
   const accountMode = getAccountMode(selectedAccount, accountId);
-  const accountDisplayId = getAccountDisplayId(selectedAccount, accountId);
   const { open: statsOpen, toggle: toggleStats } = usePanelState('trade-stats', true);
   const { open: lastTradeOpen, toggle: toggleLastTrade } = usePanelState('last-trade', true);
 
@@ -196,24 +194,6 @@ export default function Trade() {
 
   return (
     <>
-      <div className="page-header-block trade-page-header compact">
-        <div>
-          <h1 className="heading-lg">Manual Trader</h1>
-          <p className="text-secondary">
-            {accountMode.shortLabel} · {accountDisplayId}
-          </p>
-        </div>
-        <div className="trade-header-actions">
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => window.open(`https://charts.deriv.com/?symbol=${encodeURIComponent(symbol)}`, '_blank', 'noopener')}>
-            <ExternalLink size={14} /> TradingView
-          </button>
-          <div className={`connection-badge ${connected ? 'online' : 'offline'}`}>
-            {connected ? <Wifi size={14} /> : <WifiOff size={14} />}
-            {connected ? 'Live' : showConnecting ? 'Connecting…' : 'Offline'}
-          </div>
-        </div>
-      </div>
-
       {error && (
         <div className="auth-error-banner">
           {error}
@@ -253,13 +233,27 @@ export default function Trade() {
                 onSelect={selectSymbol}
                 trigger={(
                   <div className="trader-asset-picker card">
-                    <strong>{currentMeta?.displayName || symbol}</strong>
+                    <div className="trader-asset-picker-row">
+                      <strong>{currentMeta?.displayName || symbol}</strong>
+                      <ChevronDown size={14} className="trader-asset-chevron" />
+                    </div>
                     <span className="mono trader-asset-price">
                       {lastPrice != null ? lastPrice.toFixed(symbol?.startsWith('frx') ? 4 : 2) : '—'}
                     </span>
                   </div>
                 )}
               />
+            )}
+            toolbarOverlay={(
+              <div className="trader-chart-toolbar">
+                <button type="button" className="btn btn-ghost btn-xs trader-toolbar-btn" onClick={() => window.open(`https://charts.deriv.com/?symbol=${encodeURIComponent(symbol)}`, '_blank', 'noopener')}>
+                  <ExternalLink size={12} /> TradingView
+                </button>
+                <div className={`connection-badge compact ${connected ? 'online' : 'offline'}`}>
+                  {connected ? <Wifi size={12} /> : <WifiOff size={12} />}
+                  {connected ? 'Live' : showConnecting ? '…' : 'Offline'}
+                </div>
+              </div>
             )}
           />
           <CollapsiblePanel
