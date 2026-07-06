@@ -7,7 +7,7 @@ import { CATEGORIES } from '../lib/symbolGroups';
 import { Skeleton } from '../components/ui/Skeleton';
 
 export default function Markets() {
-  const { symbols, loading } = useActiveSymbols();
+  const { symbols, loading, error } = useActiveSymbols();
   const { selectSymbol, favorites, toggleFavorite } = useMarket();
   const navigate = useNavigate();
   const [category, setCategory] = useState('all');
@@ -69,7 +69,11 @@ export default function Markets() {
         </div>
       )}
 
-      {!loading && (
+      {!loading && error && (
+        <div className="auth-error-banner">Failed to load live markets: {error}</div>
+      )}
+
+      {!loading && !error && (
         <div className="markets-grid">
           {filtered.map((s) => {
             const price = prices[s.symbol];
