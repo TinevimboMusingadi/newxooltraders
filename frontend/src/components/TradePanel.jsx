@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { TrendingDown, TrendingUp, Zap, Loader2, Search } from 'lucide-react';
-import { DEFAULT_DURATION, TRADE_DURATIONS } from '../lib/tradeDurations';
+import { DEFAULT_DURATION } from '../lib/tradeDurations';
 import { api } from '../lib/api';
 import { useMarket } from '../context/MarketContext';
 import { useActiveSymbols } from '../hooks/useActiveSymbols';
+import { useContractsFor } from '../hooks/useContractsFor';
 
 const STAKES = [1, 5, 10, 25, 50];
 
@@ -35,6 +36,11 @@ export default function TradePanel({
   const [stake, setStake] = useState(5);
   const [duration, setDuration] = useState(DEFAULT_DURATION);
   const [mode, setMode] = useState('rise_fall');
+  const activeMode = MODES.find((m) => m.id === mode) || MODES[0];
+  const { allowedDurations, defaultDuration, growthRates, maxPayout, maxTicks } = useContractsFor(
+    symbol,
+    activeMode?.types || [],
+  );
   const [barrier, setBarrier] = useState(5);
   const [growthRate, setGrowthRate] = useState(3);
   const [multiplier, setMultiplier] = useState(100);
@@ -58,6 +64,10 @@ export default function TradePanel({
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [symbol]);
+
+  useEffect(() => {
+    if (defaultDuration) setDuration(defaultDuration);
+  }, [symbol, defaultDuration?.value, defaultDuration?.unit]);
 
   const buildParams = useCallback((contractType, extra = {}) => ({
     contractType,
@@ -264,7 +274,7 @@ export default function TradePanel({
         <div className="trade-field">
           <label>Duration</label>
           <div className="preset-row duration-row">
-            {TRADE_DURATIONS.map((d) => (
+            {(allowedDurations.length ? allowedDurations : []).map((d) => (
               <button
                 key={`${d.value}${d.unit}`}
                 type="button"
@@ -275,6 +285,9 @@ export default function TradePanel({
               </button>
             ))}
           </div>
+          {!allowedDurations.length && (
+            <p className="text-muted trade-hint">Loading durations for this symbol…</p>
+          )}
         </div>
       )}
 
@@ -285,14 +298,20 @@ export default function TradePanel({
         </div>
       )}
 
-      {advanced && mode === 'accumulator' && (
+      {mode === 'accumulator' && (
         <div className="trade-field">
           <label>Growth rate %</label>
           <div className="preset-row">
-            {[1, 2, 3, 4, 5].map((g) => (
+            {growthRates.map((g) => (
               <button key={g} type="button" className={`preset-btn ${growthRate === g ? 'active' : ''}`} onClick={() => setGrowthRate(g)}>{g}%</button>
             ))}
           </div>
+          {(maxPayout != null || maxTicks != null) && (
+            <div className="accumulator-meta">
+              {maxPayout != null && <span>Max payout: <strong className="mono">{Number(maxPayout).toFixed(2)}</strong></span>}
+              {maxTicks != null && <span>Max ticks: <strong>{maxTicks}</strong></span>}
+            </div>
+          )}
         </div>
       )}
 
