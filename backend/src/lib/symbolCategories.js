@@ -73,7 +73,7 @@ export function buildCategoriesFromSymbols(symbols) {
 export async function fetchActiveSymbols() {
   const { derivWsRequest } = await import('./derivWs.js');
   const data = await derivWsRequest(
-    { active_symbols: 'full', product_type: 'basic' },
+    { active_symbols: 'full' },
     { match: 'active_symbols' },
   );
   return data.active_symbols || [];
