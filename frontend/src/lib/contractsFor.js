@@ -46,7 +46,8 @@ export function parseContractsFor(data, contractTypes = []) {
     if (min && max) durationBounds.push({ min, max });
   }
 
-  const allowedDurations = filterDurations(durationBounds);
+  const allowed = filterDurations(durationBounds);
+  const allowedDurations = allowed.length ? allowed : TRADE_DURATIONS;
   const growthRateList = [...growthRates].sort((a, b) => a - b);
 
   return {
