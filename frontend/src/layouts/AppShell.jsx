@@ -27,24 +27,29 @@ const MOBILE_NAV = [
 
 const SUMMARY_ROUTES = ['/trade', '/bulk', '/scanner', '/bots', '/speedbot', '/automated', '/builder', '/chart', '/dashboard'];
 
+const TRADE_ROUTES = ['/trade', '/chart'];
+
 function AppShellContent() {
   const { user } = useAuth();
   const location = useLocation();
   const selectedAccount = user?.accounts?.find((a) => a.accountId === user?.selectedAccountId);
-  const showSummary = SUMMARY_ROUTES.some((p) => location.pathname.startsWith(p));
+  const isTradeView = TRADE_ROUTES.some((p) => location.pathname.startsWith(p));
+  const showSummary = !isTradeView && SUMMARY_ROUTES.some((p) => location.pathname.startsWith(p));
 
   return (
-    <div className="app-shell">
-      <Navbar variant="app" />
-      <LiveTicker />
+    <div className={`app-shell ${isTradeView ? 'app-shell--trade' : ''}`}>
+      <Navbar variant="app" compact={isTradeView} />
+      {!isTradeView && <LiveTicker />}
       <div className="app-shell-body">
         <AppSidebar />
         <div className="app-content-wrap">
           <main className="app-main">
-            <AccountModeBanner
-              account={selectedAccount}
-              accountId={user?.selectedAccountId}
-            />
+            {!isTradeView && (
+              <AccountModeBanner
+                account={selectedAccount}
+                accountId={user?.selectedAccountId}
+              />
+            )}
             <Outlet />
           </main>
           {showSummary && <TradeSummaryPanel />}
