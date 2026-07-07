@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { RefreshCw, Wifi, WifiOff, ExternalLink, ChevronDown } from 'lucide-react';
 import RealTradeConfirmModal from '../components/RealTradeConfirmModal';
 import TraderLineChart from '../components/TraderLineChart';
+import LiveChart from '../components/LiveChart';
 import TradePanel from '../components/TradePanel';
 import OpenPositions from '../components/OpenPositions';
 import MarketPicker from '../components/MarketPicker';
@@ -44,6 +45,7 @@ export default function Trade() {
   const [closingAll, setClosingAll] = useState(false);
   const [growthRate, setGrowthRate] = useState(3);
   const [tradeMode, setTradeMode] = useState('rise_fall');
+  const [chartType, setChartType] = useState('line');
   const subscribedRef = useRef(new Set());
 
   const {
@@ -187,7 +189,7 @@ export default function Trade() {
   );
 
   const accountMode = getAccountMode(selectedAccount, accountId);
-  const { open: statsOpen, toggle: toggleStats } = usePanelState('trade-stats', true);
+  const { open: statsOpen, toggle: toggleStats } = usePanelState('trade-stats', false);
   const { open: lastTradeOpen, toggle: toggleLastTrade } = usePanelState('last-trade', true);
 
   const showConnecting = accountId && !connected && !error;
@@ -220,42 +222,82 @@ export default function Trade() {
         </div>
       )}
 
-      <div className="trade-layout">
-        <div className="trade-chart-section card trader-chart-section">
-          <TraderLineChart
-            symbol={symbol}
-            onPriceUpdate={setLastPrice}
-            growthRate={growthRate}
-            showAccumulatorBand={tradeMode === 'accumulator'}
-            overlay={(
-              <MarketPicker
-                symbol={symbol}
-                onSelect={selectSymbol}
-                trigger={(
-                  <div className="trader-asset-picker card">
-                    <div className="trader-asset-picker-row">
-                      <strong>{currentMeta?.displayName || symbol}</strong>
-                      <ChevronDown size={14} className="trader-asset-chevron" />
+      <div className="trade-layout trade-page">
+        <div className="trade-chart-section trader-chart-section">
+          {chartType === 'line' ? (
+            <TraderLineChart
+              symbol={symbol}
+              onPriceUpdate={setLastPrice}
+              growthRate={growthRate}
+              showAccumulatorBand={tradeMode === 'accumulator'}
+              overlay={(
+                <MarketPicker
+                  symbol={symbol}
+                  onSelect={selectSymbol}
+                  trigger={(
+                    <div className="trader-asset-picker">
+                      <div className="trader-asset-picker-row">
+                        <strong>{currentMeta?.displayName || symbol}</strong>
+                        <ChevronDown size={12} className="trader-asset-chevron" />
+                      </div>
+                      <span className="mono trader-asset-price">
+                        {lastPrice != null ? lastPrice.toFixed(symbol?.startsWith('frx') ? 4 : 2) : '—'}
+                      </span>
                     </div>
-                    <span className="mono trader-asset-price">
-                      {lastPrice != null ? lastPrice.toFixed(symbol?.startsWith('frx') ? 4 : 2) : '—'}
-                    </span>
+                  )}
+                />
+              )}
+              toolbarOverlay={(
+                <div className="trader-chart-toolbar">
+                  <div className="chart-type-toggle">
+                    <button type="button" className={chartType === 'line' ? 'active' : ''} onClick={() => setChartType('line')}>Line</button>
+                    <button type="button" className={chartType === 'candle' ? 'active' : ''} onClick={() => setChartType('candle')}>Candles</button>
                   </div>
-                )}
-              />
-            )}
-            toolbarOverlay={(
-              <div className="trader-chart-toolbar">
-                <button type="button" className="btn btn-ghost btn-xs trader-toolbar-btn" onClick={() => window.open(`https://charts.deriv.com/?symbol=${encodeURIComponent(symbol)}`, '_blank', 'noopener')}>
-                  <ExternalLink size={12} /> TradingView
-                </button>
-                <div className={`connection-badge compact ${connected ? 'online' : 'offline'}`}>
-                  {connected ? <Wifi size={12} /> : <WifiOff size={12} />}
-                  {connected ? 'Live' : showConnecting ? '…' : 'Offline'}
+                  <button type="button" className="btn btn-ghost btn-xs trader-toolbar-btn" onClick={() => window.open(`https://charts.deriv.com/?symbol=${encodeURIComponent(symbol)}`, '_blank', 'noopener')}>
+                    <ExternalLink size={12} /> TV
+                  </button>
+                  <div className={`connection-badge compact ${connected ? 'online' : 'offline'}`}>
+                    {connected ? <Wifi size={12} /> : <WifiOff size={12} />}
+                    {connected ? 'Live' : showConnecting ? '…' : 'Off'}
+                  </div>
+                </div>
+              )}
+            />
+          ) : (
+            <div className="trade-candle-wrap">
+              <div className="trader-chart-overlays trade-candle-overlays">
+                <MarketPicker
+                  symbol={symbol}
+                  onSelect={selectSymbol}
+                  trigger={(
+                    <div className="trader-asset-picker">
+                      <div className="trader-asset-picker-row">
+                        <strong>{currentMeta?.displayName || symbol}</strong>
+                        <ChevronDown size={12} className="trader-asset-chevron" />
+                      </div>
+                      <span className="mono trader-asset-price">
+                        {lastPrice != null ? lastPrice.toFixed(symbol?.startsWith('frx') ? 4 : 2) : '—'}
+                      </span>
+                    </div>
+                  )}
+                />
+                <div className="trader-chart-toolbar">
+                  <div className="chart-type-toggle">
+                    <button type="button" className={chartType === 'line' ? 'active' : ''} onClick={() => setChartType('line')}>Line</button>
+                    <button type="button" className={chartType === 'candle' ? 'active' : ''} onClick={() => setChartType('candle')}>Candles</button>
+                  </div>
+                  <button type="button" className="btn btn-ghost btn-xs trader-toolbar-btn" onClick={() => window.open(`https://charts.deriv.com/?symbol=${encodeURIComponent(symbol)}`, '_blank', 'noopener')}>
+                    <ExternalLink size={12} /> TV
+                  </button>
+                  <div className={`connection-badge compact ${connected ? 'online' : 'offline'}`}>
+                    {connected ? <Wifi size={12} /> : <WifiOff size={12} />}
+                    {connected ? 'Live' : showConnecting ? '…' : 'Off'}
+                  </div>
                 </div>
               </div>
-            )}
-          />
+              <LiveChart symbol={symbol} onPriceUpdate={setLastPrice} fill />
+            </div>
+          )}
           <CollapsiblePanel
             title="Stats"
             open={statsOpen}
@@ -282,6 +324,7 @@ export default function Trade() {
           onGrowthRateChange={setGrowthRate}
           mode={tradeMode}
           onModeChange={setTradeMode}
+          compact
         />
       </div>
 
