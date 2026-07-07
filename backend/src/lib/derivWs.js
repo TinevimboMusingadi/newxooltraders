@@ -3,7 +3,7 @@ import { config } from '../config.js';
 const LEGACY_WS = `wss://ws.derivws.com/websockets/v3?app_id=${config.deriv.appId || '1089'}`;
 
 export function getDerivWsUrl() {
-  return process.env.DERIV_WS_URL || LEGACY_WS;
+  return process.env.DERIV_WS_URL || config.deriv.publicWs || LEGACY_WS;
 }
 
 export function derivWsRequest(payload, { timeoutMs = 10000, match = (data) => data.msg_type } = {}) {
