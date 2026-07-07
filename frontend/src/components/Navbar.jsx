@@ -8,7 +8,7 @@ import AuthCTA from '../components/AuthCTA';
 import AccountSwitcher from '../components/AccountSwitcher';
 import { getAccountMode } from '../lib/accountDisplay';
 
-export default function Navbar({ variant = 'landing' }) {
+export default function Navbar({ variant = 'landing', compact = false }) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -59,10 +59,10 @@ export default function Navbar({ variant = 'landing' }) {
   );
 
   return (
-    <nav className={`navbar ${variant === 'app' || isScrolled ? 'scrolled' : ''}`}>
+    <nav className={`navbar ${variant === 'app' || isScrolled ? 'scrolled' : ''} ${compact ? 'navbar-compact' : ''}`}>
       <div className="container">
         <Link to={isAuthenticated ? '/dashboard' : '/'} className="logo" onClick={() => setMobileOpen(false)}>
-          <img src={asset4} alt="Newxool Traders Logo" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
+          <img src={asset4} alt="Newxool Traders Logo" style={{ width: compact ? '26px' : '32px', height: compact ? '26px' : '32px', objectFit: 'contain' }} />
           newxool<span>traders</span>
         </Link>
 
