@@ -4,8 +4,9 @@ import { GRANULARITIES, DEFAULT_GRANULARITY } from '../lib/chartUtils';
 import { useTheme } from '../context/ThemeContext';
 import { ChartSkeleton } from './ui/Skeleton';
 
-export default function LiveChart({ symbol, onPriceUpdate, height = 420 }) {
+export default function LiveChart({ symbol, onPriceUpdate, height = 420, fill = false }) {
   const containerRef = useRef(null);
+  const wrapRef = useRef(null);
   const chartRef = useRef(null);
   const seriesRef = useRef(null);
   const priceLineRef = useRef(null);
@@ -15,9 +16,23 @@ export default function LiveChart({ symbol, onPriceUpdate, height = 420 }) {
   const [loading, setLoading] = useState(true);
   const [ohlc, setOhlc] = useState(null);
   const [currentPrice, setCurrentPrice] = useState(null);
+  const [chartHeight, setChartHeight] = useState(height);
   const { theme } = useTheme();
 
   const isDark = theme === 'dark';
+
+  useEffect(() => {
+    if (!fill || !wrapRef.current) return;
+    const ro = new ResizeObserver((entries) => {
+      const h = entries[0]?.contentRect.height;
+      if (h && h > 100) {
+        setChartHeight(Math.floor(h));
+        chartRef.current?.applyOptions({ height: Math.floor(h) });
+      }
+    });
+    ro.observe(wrapRef.current);
+    return () => ro.disconnect();
+  }, [fill]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -35,7 +50,7 @@ export default function LiveChart({ symbol, onPriceUpdate, height = 420 }) {
       rightPriceScale: { borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)' },
       timeScale: { borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)', timeVisible: true },
       width: containerRef.current.clientWidth,
-      height,
+      height: fill ? (wrapRef.current?.clientHeight || height) : chartHeight,
     });
 
     const series = chart.addSeries(CandlestickSeries, {
@@ -68,7 +83,8 @@ export default function LiveChart({ symbol, onPriceUpdate, height = 420 }) {
 
     const handleResize = () => {
       if (containerRef.current) {
-        chart.applyOptions({ width: containerRef.current.clientWidth });
+        const h = fill && wrapRef.current ? wrapRef.current.clientHeight : chartHeight;
+        chart.applyOptions({ width: containerRef.current.clientWidth, height: h || chartHeight });
       }
     };
     window.addEventListener('resize', handleResize);
@@ -78,7 +94,7 @@ export default function LiveChart({ symbol, onPriceUpdate, height = 420 }) {
       chart.remove();
       priceLineRef.current = null;
     };
-  }, [isDark, height]);
+  }, [isDark, chartHeight, fill]);
 
   useEffect(() => {
     if (!symbol || !seriesRef.current) return;
@@ -221,7 +237,7 @@ export default function LiveChart({ symbol, onPriceUpdate, height = 420 }) {
     : null);
 
   return (
-    <div className="live-chart-wrap">
+    <div ref={wrapRef} className={`live-chart-wrap ${fill ? 'live-chart-fill' : ''}`}>
       <div className="chart-toolbar">
         <div className="chart-toolbar-left">
           <span className="chart-symbol-label">{symbol}</span>

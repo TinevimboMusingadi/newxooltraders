@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { TrendingDown, TrendingUp, Loader2, Search } from 'lucide-react';
-import { DEFAULT_DURATION } from '../lib/tradeDurations';
+import { DEFAULT_DURATION, TRADE_DURATIONS } from '../lib/tradeDurations';
 import { api } from '../lib/api';
 import { useMarket } from '../context/MarketContext';
 import { useActiveSymbols } from '../hooks/useActiveSymbols';
@@ -34,6 +34,7 @@ export default function TradePanel({
   onGrowthRateChange,
   mode: modeProp,
   onModeChange,
+  compact = false,
 }) {
   const { selectSymbol } = useMarket();
   const { symbols } = useActiveSymbols();
@@ -43,7 +44,7 @@ export default function TradePanel({
   const mode = modeProp ?? modeLocal;
   const setMode = onModeChange ?? setModeLocal;
   const activeMode = MODES.find((m) => m.id === mode) || MODES[0];
-  const { allowedDurations, defaultDuration, growthRates, maxPayout, maxTicks } = useContractsFor(
+  const { allowedDurations, defaultDuration, growthRates, maxPayout, maxTicks, loading: contractsLoading } = useContractsFor(
     symbol,
     activeMode?.types || [],
   );
@@ -162,6 +163,7 @@ export default function TradePanel({
   );
 
   const balanceDisplay = balance?.balance != null ? `${balance.balance} ${balance.currency || currency || 'USD'}` : '—';
+  const durationOptions = allowedDurations.length ? allowedDurations : TRADE_DURATIONS;
 
   const filteredSymbols = symbols.filter((s) => {
     const q = symbolSearch.toLowerCase();
@@ -180,64 +182,70 @@ export default function TradePanel({
   );
 
   return (
-    <div className="trade-panel card">
+    <div className={`trade-panel ${compact ? 'trade-panel-compact' : 'card'}`}>
       <div className="trade-panel-header">
         <h3 className="heading-md">{mode === 'accumulator' ? 'Accumulators' : 'Trade'}</h3>
-        <span className={`status-dot ${connected ? 'online' : 'offline'}`}>
-          {connected ? 'Live' : 'Connecting…'}
-        </span>
+        {!compact && (
+          <span className={`status-dot ${connected ? 'online' : 'offline'}`}>
+            {connected ? 'Live' : 'Connecting…'}
+          </span>
+        )}
       </div>
 
-      {accountMode === 'real' && (
+      {accountMode === 'real' && !compact && (
         <p className="trade-live-warning">Live account — real funds at risk</p>
       )}
 
-      <div className="trade-stat-row">
-        <div>
-          <span className="text-muted">Balance</span>
-          <p className="trade-stat-value mono">{balanceDisplay}</p>
-        </div>
-        <div>
-          <span className="text-muted">Price</span>
-          <p className="trade-stat-value mono">{lastPrice != null ? lastPrice.toFixed(4) : '—'}</p>
-        </div>
-        <div>
-          <span className="text-muted">Open</span>
-          <p className="trade-stat-value">{openContracts?.length || 0}</p>
-        </div>
-      </div>
-
-      <div className="trade-symbol-picker">
-        <button type="button" className="symbol-picker-toggle" onClick={() => setShowSymbolPicker(!showSymbolPicker)}>
-          <Search size={14} />
-          <span className="mono">{symbol}</span>
-        </button>
-        {showSymbolPicker && (
-          <div className="symbol-picker-dropdown">
-            <input
-              type="search"
-              placeholder="Search symbol…"
-              value={symbolSearch}
-              onChange={(e) => setSymbolSearch(e.target.value)}
-              className="trade-input"
-            />
-            <ul className="symbol-picker-list">
-              {filteredSymbols.map((s) => (
-                <li key={s.symbol}>
-                  <button
-                    type="button"
-                    className={s.symbol === symbol ? 'active' : ''}
-                    onClick={() => { selectSymbol(s.symbol); setShowSymbolPicker(false); setSymbolSearch(''); }}
-                  >
-                    <span>{s.displayName || s.symbol}</span>
-                    <span className="mono text-muted">{s.symbol}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+      {!compact && (
+        <div className="trade-stat-row">
+          <div>
+            <span className="text-muted">Balance</span>
+            <p className="trade-stat-value mono">{balanceDisplay}</p>
           </div>
-        )}
-      </div>
+          <div>
+            <span className="text-muted">Price</span>
+            <p className="trade-stat-value mono">{lastPrice != null ? lastPrice.toFixed(4) : '—'}</p>
+          </div>
+          <div>
+            <span className="text-muted">Open</span>
+            <p className="trade-stat-value">{openContracts?.length || 0}</p>
+          </div>
+        </div>
+      )}
+
+      {!compact && (
+        <div className="trade-symbol-picker">
+          <button type="button" className="symbol-picker-toggle" onClick={() => setShowSymbolPicker(!showSymbolPicker)}>
+            <Search size={14} />
+            <span className="mono">{symbol}</span>
+          </button>
+          {showSymbolPicker && (
+            <div className="symbol-picker-dropdown">
+              <input
+                type="search"
+                placeholder="Search symbol…"
+                value={symbolSearch}
+                onChange={(e) => setSymbolSearch(e.target.value)}
+                className="trade-input"
+              />
+              <ul className="symbol-picker-list">
+                {filteredSymbols.map((s) => (
+                  <li key={s.symbol}>
+                    <button
+                      type="button"
+                      className={s.symbol === symbol ? 'active' : ''}
+                      onClick={() => { selectSymbol(s.symbol); setShowSymbolPicker(false); setSymbolSearch(''); }}
+                    >
+                      <span>{s.displayName || s.symbol}</span>
+                      <span className="mono text-muted">{s.symbol}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="trade-mode-toggle">
         {availableModes.map((m) => (
@@ -252,10 +260,12 @@ export default function TradePanel({
         ))}
       </div>
 
-      <div className="trade-view-toggle">
-        <button type="button" className={`pill-toggle ${!advanced ? 'active' : ''}`} onClick={() => setAdvanced(false)}>Quick</button>
-        <button type="button" className={`pill-toggle ${advanced ? 'active' : ''}`} onClick={() => setAdvanced(true)}>Advanced</button>
-      </div>
+      {!compact && (
+        <div className="trade-view-toggle">
+          <button type="button" className={`pill-toggle ${!advanced ? 'active' : ''}`} onClick={() => setAdvanced(false)}>Quick</button>
+          <button type="button" className={`pill-toggle ${advanced ? 'active' : ''}`} onClick={() => setAdvanced(true)}>Advanced</button>
+        </div>
+      )}
 
       <div className="trade-field">
         <label>Stake ({currency || 'USD'})</label>
@@ -282,7 +292,7 @@ export default function TradePanel({
         <div className="trade-field">
           <label>Duration</label>
           <div className="preset-row duration-row">
-            {(allowedDurations.length ? allowedDurations : []).map((d) => (
+            {(durationOptions).map((d) => (
               <button
                 key={`${d.value}${d.unit}`}
                 type="button"
@@ -293,8 +303,11 @@ export default function TradePanel({
               </button>
             ))}
           </div>
-          {!allowedDurations.length && (
-            <p className="text-muted trade-hint">Loading durations for this symbol…</p>
+          {contractsLoading && !durationOptions.length && (
+            <p className="text-muted trade-hint">Loading durations…</p>
+          )}
+          {!contractsLoading && !allowedDurations.length && (
+            <p className="text-muted trade-hint">Using default durations for this symbol.</p>
           )}
         </div>
       )}
