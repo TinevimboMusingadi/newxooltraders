@@ -329,28 +329,13 @@ export default function TraderLineChart({
     if (currentPrice != null) syncOverlays(currentPrice);
   }, [growthRate, showAccumulatorBand, currentPrice, syncOverlays]);
 
-  const change = currentPrice != null && prevPrice != null ? currentPrice - prevPrice : null;
-  const changePct = change != null && prevPrice ? (change / prevPrice) * 100 : null;
-  const up = change == null ? true : change >= 0;
-
   return (
     <div className="trader-line-chart">
       <div ref={stageRef} className="trader-chart-stage">
         <div className="trader-chart-overlays">
-          {overlay}
-          {toolbarOverlay}
+        {overlay}
+        {toolbarOverlay}
         </div>
-        {currentPrice != null && (
-          <div className="trader-chart-price-chip card">
-            <span className="trader-chart-price mono">{formatPrice(symbol, currentPrice)}</span>
-            {change != null && (
-              <span className={`trader-chart-change ${up ? 'up' : 'down'}`}>
-                {up ? '▲' : '▼'} {Math.abs(change).toFixed(2)}
-                {changePct != null && ` (${Math.abs(changePct).toFixed(2)}%)`}
-              </span>
-            )}
-          </div>
-        )}
         <div className="chart-container trader-chart-container">
           {loading && (
             <div className="chart-loading">
