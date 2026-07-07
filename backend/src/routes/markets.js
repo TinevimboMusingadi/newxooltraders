@@ -55,7 +55,7 @@ router.get('/contracts/:symbol', cacheMiddleware({ ttl: 300, prefix: 'contracts'
   const { symbol } = req.params;
   try {
     const data = await derivWsRequest(
-      { contracts_for: symbol, product_type: 'basic' },
+      { contracts_for: symbol },
       { match: 'contracts_for' },
     );
     res.json(data.contracts_for || data);
@@ -80,7 +80,8 @@ router.get('/signals/live', cacheMiddleware({ ttl: 30, prefix: 'signals' }), asy
     await cacheSet('live_signals', response, 30);
     res.json(response);
   } catch (err) {
-    res.status(502).json({ error: err.message });
+    console.error('[signals/live]', err.message);
+    res.json({ signals: [], cachedAt: new Date().toISOString(), error: err.message });
   }
 });
 
