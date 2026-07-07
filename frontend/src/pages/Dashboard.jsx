@@ -57,7 +57,9 @@ export default function Dashboard() {
         )}
 
         {!isLoading && !signals.length && !error && (
-          <p className="text-muted">No signals available — check Deriv connection.</p>
+          <p className="text-muted">
+            {data?.error ? `Signals temporarily unavailable (${data.error})` : 'No signals available — check Deriv connection.'}
+          </p>
         )}
       </section>
     </div>
