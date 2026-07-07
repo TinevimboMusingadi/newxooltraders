@@ -32,9 +32,10 @@ export default function OpenPositions({
   onCloseAll,
   currency,
   closingAll,
+  defaultOpen = false,
 }) {
   const list = contracts || [];
-  const { open, toggle, setOpen } = usePanelState('open-positions', true);
+  const { open, toggle, setOpen } = usePanelState('open-positions', defaultOpen);
 
   useEffect(() => {
     if (list.length > 0) setOpen(true);
