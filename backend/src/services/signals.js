@@ -44,7 +44,7 @@ async function fetchTicks(symbol, count = 500) {
       style: 'ticks',
     },
     {
-      timeoutMs: 15000,
+      timeoutMs: 20000,
       match: (d) => d.msg_type === 'history',
     },
   );
