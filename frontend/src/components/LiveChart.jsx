@@ -4,23 +4,47 @@ import { GRANULARITIES, DEFAULT_GRANULARITY } from '../lib/chartUtils';
 import { useTheme } from '../context/ThemeContext';
 import { ChartSkeleton } from './ui/Skeleton';
 import { formatSymbolLabel, isValidSymbol } from '../lib/symbolUtils';
+import { useChartToolkit } from '../hooks/useChartToolkit';
 
-export default function LiveChart({ symbol, onPriceUpdate, height = 420, fill = false, hideToolbar = false }) {
+export default function LiveChart({
+  symbol,
+  onPriceUpdate,
+  height = 420,
+  fill = false,
+  hideToolbar = false,
+  indicators = {},
+  drawMode = 'none',
+  drawings = [],
+  setDrawings,
+}) {
   const containerRef = useRef(null);
   const wrapRef = useRef(null);
   const chartRef = useRef(null);
   const seriesRef = useRef(null);
   const priceLineRef = useRef(null);
   const lastCandleRef = useRef(null);
+  const candlesRef = useRef([]);
   const wsRef = useRef(null);
   const [granularity, setGranularity] = useState(DEFAULT_GRANULARITY);
   const [loading, setLoading] = useState(true);
   const [ohlc, setOhlc] = useState(null);
   const [currentPrice, setCurrentPrice] = useState(null);
   const [chartHeight, setChartHeight] = useState(height);
+  const [dataVersion, setDataVersion] = useState(0);
   const { theme } = useTheme();
 
   const isDark = theme === 'dark';
+
+  const { refreshIndicators } = useChartToolkit({
+    chartRef,
+    mainSeriesRef: seriesRef,
+    pointsRef: candlesRef,
+    indicators,
+    drawMode,
+    drawings,
+    setDrawings,
+    dataVersion,
+  });
 
   useEffect(() => {
     if (!fill || !wrapRef.current) return;
@@ -107,6 +131,7 @@ export default function LiveChart({ symbol, onPriceUpdate, height = 420, fill = 
     setCurrentPrice(null);
     seriesRef.current.setData([]);
     lastCandleRef.current = null;
+    candlesRef.current = [];
     if (priceLineRef.current) {
       try {
         seriesRef.current.removePriceLine(priceLineRef.current);
@@ -164,11 +189,13 @@ export default function LiveChart({ symbol, onPriceUpdate, height = 420, fill = 
           close: Number(c.close),
         }));
         seriesRef.current.setData(candles);
+        candlesRef.current = candles;
         lastCandleRef.current = candles[candles.length - 1];
         const lastClose = candles[candles.length - 1].close;
         setCurrentPrice(lastClose);
         updatePriceLine(lastClose);
         setLoading(false);
+        setDataVersion((v) => v + 1);
       }
 
       if (data.msg_type === 'tick' && data.tick) {
@@ -184,6 +211,7 @@ export default function LiveChart({ symbol, onPriceUpdate, height = 420, fill = 
         if (!last || last.time !== bucket) {
           const newCandle = { time: bucket, open: quote, high: quote, low: quote, close: quote };
           lastCandleRef.current = newCandle;
+          candlesRef.current = [...candlesRef.current, newCandle].slice(-300);
           seriesRef.current.update(newCandle);
         } else {
           const updated = {
@@ -193,8 +221,12 @@ export default function LiveChart({ symbol, onPriceUpdate, height = 420, fill = 
             close: quote,
           };
           lastCandleRef.current = updated;
+          const arr = candlesRef.current.slice();
+          if (arr.length) arr[arr.length - 1] = updated;
+          candlesRef.current = arr;
           seriesRef.current.update(updated);
         }
+        if (candlesRef.current.length % 3 === 0) refreshIndicators();
       }
 
       if (data.msg_type === 'ohlc' && data.ohlc) {
@@ -229,7 +261,7 @@ export default function LiveChart({ symbol, onPriceUpdate, height = 420, fill = 
       }
       ws.close();
     };
-  }, [symbol, granularity, onPriceUpdate]);
+  }, [symbol, granularity, onPriceUpdate, refreshIndicators]);
 
   const displayOhlc = ohlc || (lastCandleRef.current
     ? {
