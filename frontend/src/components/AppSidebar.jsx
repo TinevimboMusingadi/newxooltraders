@@ -37,7 +37,7 @@ const NAV_GROUPS = [
   {
     id: 'bots',
     label: 'Automation',
-    defaultOpen: true,
+    defaultOpen: false,
     items: [
       { to: '/bots', label: 'Apex Bot', icon: Bot },
       { to: '/speedbot', label: 'Speedbot', icon: Sun },
@@ -49,7 +49,7 @@ const NAV_GROUPS = [
   {
     id: 'account',
     label: 'Account',
-    defaultOpen: true,
+    defaultOpen: false,
     items: [
       { to: '/history', label: 'History', icon: Clock },
       { to: '/profile', label: 'Profile', icon: User },
@@ -102,7 +102,7 @@ function NavGroup({ group, sidebarCollapsed }) {
 }
 
 export default function AppSidebar() {
-  const { open: expanded, toggle: toggleSidebar } = usePanelState('sidebar-expanded', true);
+  const { open: expanded, toggle: toggleSidebar } = usePanelState('sidebar-expanded', false);
   const collapsed = !expanded;
 
   return (
