@@ -13,11 +13,28 @@ export const CATEGORY_LABELS = Object.fromEntries(
   CATEGORIES.filter((c) => c.id !== 'all').map((c) => [c.id, c.label]),
 );
 
+function pickSymbolCode(s) {
+  return s.symbol || s.underlying_symbol || s.underlyingSymbol || null;
+}
+
+function pickDisplayName(s) {
+  return (
+    s.displayName
+    || s.display_name
+    || s.underlying_symbol_name
+    || s.underlyingSymbolName
+    || pickSymbolCode(s)
+    || null
+  );
+}
+
 function isVolatilitySymbol(s) {
   const sub = (s.submarket || '').toLowerCase();
-  const sym = s.symbol || '';
+  const sym = pickSymbolCode(s) || '';
+  const name = pickDisplayName(s) || '';
   return (
     /volatility|random/i.test(sub)
+    || /volatility/i.test(name)
     || /^R_|^1HZ/i.test(sym)
   );
 }
@@ -38,17 +55,19 @@ export function mapCategoryFromSymbol(s) {
 }
 
 export function mapActiveSymbol(s) {
-  const displayName = s.displayName || s.display_name || s.symbol;
+  const symbol = pickSymbolCode(s);
+  const displayName = pickDisplayName(s);
+  if (!symbol) return null;
   return {
-    symbol: s.symbol,
-    displayName,
-    category: mapCategoryFromSymbol(s),
+    symbol,
+    displayName: displayName || symbol,
+    category: mapCategoryFromSymbol({ ...s, symbol }),
     market: s.market,
     submarket: s.submarket,
     marketDisplay: s.marketDisplay || s.market_display_name || s.market,
     submarketDisplay: s.submarketDisplay || s.submarket_display_name || s.submarket,
     exchangeOpen: s.exchange_is_open ?? s.exchangeOpen,
-    pip: s.pip,
+    pip: s.pip ?? s.pip_size,
     spot: s.spot,
     spotAge: s.spot_age ?? s.spotAge,
   };
@@ -56,12 +75,14 @@ export function mapActiveSymbol(s) {
 
 /** Normalize API symbols without wiping backend-mapped fields. */
 export function normalizeSymbol(s) {
-  if (!s?.symbol) return null;
-  if (s.displayName && s.market) {
+  const symbol = pickSymbolCode(s);
+  if (!symbol) return null;
+  if (s.displayName && s.market && s.symbol) {
     return {
       ...s,
-      displayName: s.displayName || s.display_name || s.symbol,
-      category: s.category || mapCategoryFromSymbol(s),
+      symbol,
+      displayName: pickDisplayName(s) || symbol,
+      category: s.category || mapCategoryFromSymbol({ ...s, symbol }),
     };
   }
   return mapActiveSymbol(s);
