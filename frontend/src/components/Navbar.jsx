@@ -31,10 +31,7 @@ export default function Navbar({ variant = 'landing', compact = false }) {
   const navContent = (
     <>
       {variant === 'app' && isAuthenticated && (
-        <>
-          <Link to="/history" className="nav-link" onClick={() => setMobileOpen(false)}>Reports</Link>
-          <AccountSwitcher />
-        </>
+        <AccountSwitcher />
       )}
       {variant === 'landing' && (
         <>
