@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { api } from '../lib/api';
-import { mapActiveSymbol } from '../lib/symbolGroups';
+import { normalizeSymbol } from '../lib/symbolGroups';
 
 export function useActiveSymbols() {
   const [symbols, setSymbols] = useState([]);
@@ -14,7 +14,7 @@ export function useActiveSymbols() {
         const data = await api.getLiveSymbols();
         if (!cancelled) {
           if (data.symbols?.length) {
-            setSymbols(data.symbols.map((s) => (s.symbol ? mapActiveSymbol(s) : s)));
+            setSymbols(data.symbols.map(normalizeSymbol).filter(Boolean));
           } else {
             setError('No symbols returned from Deriv');
           }
