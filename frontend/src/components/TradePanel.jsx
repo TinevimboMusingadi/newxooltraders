@@ -5,6 +5,7 @@ import { api } from '../lib/api';
 import { useMarket } from '../context/MarketContext';
 import { useActiveSymbols } from '../hooks/useActiveSymbols';
 import { useContractsFor } from '../hooks/useContractsFor';
+import { formatSymbolLabel, isValidSymbol } from '../lib/symbolUtils';
 
 const STAKES = [1, 5, 10, 25, 50];
 
@@ -63,7 +64,7 @@ export default function TradePanel({
   const [pendingAction, setPendingAction] = useState(null);
 
   useEffect(() => {
-    if (!symbol) return;
+    if (!isValidSymbol(symbol)) return;
     let cancelled = false;
     api.getContractsFor(symbol).then((data) => {
       if (cancelled || !data?.available) return;
@@ -184,7 +185,12 @@ export default function TradePanel({
   return (
     <div className={`trade-panel ${compact ? 'trade-panel-compact' : 'card'}`}>
       <div className="trade-panel-header">
-        <h3 className="heading-md">{mode === 'accumulator' ? 'Accumulators' : 'Trade'}</h3>
+        <div>
+          <h3 className="heading-md">{mode === 'accumulator' ? 'Accumulators' : 'Trade'}</h3>
+          {compact && (
+            <p className="trade-panel-symbol mono text-muted">{formatSymbolLabel(symbol)}</p>
+          )}
+        </div>
         {!compact && (
           <span className={`status-dot ${connected ? 'online' : 'offline'}`}>
             {connected ? 'Live' : 'Connecting…'}
