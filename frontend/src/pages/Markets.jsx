@@ -5,6 +5,7 @@ import { useActiveSymbols, useRealtimePrices } from '../hooks/useActiveSymbols';
 import { useMarket } from '../context/MarketContext';
 import { CATEGORIES, categoryLabel, priceDecimals } from '../lib/symbolGroups';
 import { isValidSymbol } from '../lib/symbolUtils';
+import { marketFlag } from '../lib/currencyFlags';
 import { Skeleton } from '../components/ui/Skeleton';
 
 export default function Markets() {
@@ -92,12 +93,18 @@ export default function Markets() {
             return (
               <div key={s.symbol} className="market-card card" data-tick={price?.dir}>
                 <div className="market-card-top">
-                  <span className="market-category">{categoryLabel(s.category)}</span>
+                  <span className="market-category">
+                    <span className="market-flag" aria-hidden>{marketFlag(s.category, s.symbol)}</span>
+                    {categoryLabel(s.category)}
+                  </span>
                   <button type="button" className="fav-btn" onClick={() => toggleFavorite(s.symbol)}>
                     <Star size={14} fill={favorites.includes(s.symbol) ? 'currentColor' : 'none'} />
                   </button>
                 </div>
-                <h3 className="market-name">{s.displayName || s.symbol}</h3>
+                <h3 className="market-name">
+                  <span className="market-flag" aria-hidden>{marketFlag(s.category, s.symbol)}</span>
+                  {s.displayName || s.symbol}
+                </h3>
                 <p className="market-symbol-code mono text-muted">{s.symbol}</p>
                 <div className="market-price-row">
                   <span className="market-price mono">{formatted ?? '—'}</span>
