@@ -25,6 +25,10 @@ import {
   isDemoAccount,
 } from '../lib/accountDisplay';
 import { formatSymbolLabel, isValidSymbol, sanitizeSymbol } from '../lib/symbolUtils';
+import { marketFlag } from '../lib/currencyFlags';
+import ChartToolsToolbar from '../components/ChartToolsToolbar';
+
+const DEFAULT_INDICATORS = { sma: true, ema: false, bb: false, rsi: false };
 
 export default function Trade() {
   const { user, refresh } = useAuth();
@@ -50,6 +54,9 @@ export default function Trade() {
   const [growthRate, setGrowthRate] = useState(3);
   const [tradeMode, setTradeMode] = useState('rise_fall');
   const [chartType, setChartType] = useState('line');
+  const [indicators, setIndicators] = useState(DEFAULT_INDICATORS);
+  const [drawMode, setDrawMode] = useState('none');
+  const [drawings, setDrawings] = useState([]);
   const subscribedRef = useRef(new Set());
 
   const {
@@ -79,7 +86,13 @@ export default function Trade() {
 
   useEffect(() => {
     setLastPrice(null);
+    setDrawings([]);
+    setDrawMode('none');
   }, [symbol]);
+
+  const toggleIndicator = useCallback((id) => {
+    setIndicators((prev) => ({ ...prev, [id]: !prev[id] }));
+  }, []);
 
   useEffect(() => {
     if (!connected || !openContracts?.length) return;
@@ -206,6 +219,7 @@ export default function Trade() {
   const showConnecting = accountId && !connected && !error;
   const symbolLabel = formatSymbolLabel(symbol, currentMeta?.displayName);
   const priceDecimals = symbol?.startsWith('frx') ? 4 : 2;
+  const flag = marketFlag(currentMeta?.category, symbol);
 
   const assetPicker = (
     <MarketPicker
@@ -214,6 +228,7 @@ export default function Trade() {
       trigger={(
         <div className="trader-asset-picker">
           <div className="trader-asset-picker-row">
+            <span className="market-flag" aria-hidden>{flag}</span>
             <strong>{symbolLabel}</strong>
             <ChevronDown size={12} className="trader-asset-chevron" />
           </div>
@@ -231,6 +246,14 @@ export default function Trade() {
         <button type="button" className={chartType === 'line' ? 'active' : ''} onClick={() => setChartType('line')}>Line</button>
         <button type="button" className={chartType === 'candle' ? 'active' : ''} onClick={() => setChartType('candle')}>Candles</button>
       </div>
+      <ChartToolsToolbar
+        indicators={indicators}
+        onToggleIndicator={toggleIndicator}
+        drawMode={drawMode}
+        onDrawMode={setDrawMode}
+        onClearDrawings={() => setDrawings([])}
+        drawingCount={drawings.length}
+      />
       <div className={`connection-badge compact ${connected ? 'online' : 'offline'}`}>
         {connected ? <Wifi size={12} /> : <WifiOff size={12} />}
         {connected ? 'Live' : showConnecting ? '…' : 'Off'}
@@ -276,6 +299,10 @@ export default function Trade() {
               showAccumulatorBand={tradeMode === 'accumulator'}
               overlay={assetPicker}
               toolbarOverlay={chartToolbar}
+              indicators={indicators}
+              drawMode={drawMode}
+              drawings={drawings}
+              setDrawings={setDrawings}
             />
           ) : (
             <div className="trade-candle-wrap">
@@ -283,7 +310,16 @@ export default function Trade() {
                 {assetPicker}
                 {chartToolbar}
               </div>
-              <LiveChart symbol={symbol} onPriceUpdate={setLastPrice} fill hideToolbar />
+              <LiveChart
+                symbol={symbol}
+                onPriceUpdate={setLastPrice}
+                fill
+                hideToolbar
+                indicators={indicators}
+                drawMode={drawMode}
+                drawings={drawings}
+                setDrawings={setDrawings}
+              />
             </div>
           )}
           <CollapsiblePanel
