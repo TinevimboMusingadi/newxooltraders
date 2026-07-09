@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Star, Search, X } from 'lucide-react';
 import { useActiveSymbols } from '../hooks/useActiveSymbols';
 import { useMarket } from '../context/MarketContext';
-import { buildCategoryTree } from '../lib/symbolGroups';
+import { buildCategoryTree, symbolsForCategory } from '../lib/symbolGroups';
 import { useMarketCategories } from '../hooks/queries';
 import { formatSymbolLabel, isValidSymbol } from '../lib/symbolUtils';
 
@@ -18,23 +18,26 @@ export default function MarketPicker({ symbol, onSelect, trigger }) {
     ? catData.categories
     : buildCategoryTree(symbols);
 
+  useEffect(() => {
+    if (categories.length && !categories.find((c) => c.id === activeMarket)) {
+      setActiveMarket(categories[0].id);
+    }
+  }, [categories, activeMarket]);
+
   const activeCategory = categories.find((c) => c.id === activeMarket) || categories[0];
 
   const filteredSymbols = useMemo(() => {
     const q = search.toLowerCase().trim();
-    if (!q) {
-      const sub = activeCategory?.submarkets?.[0];
-      return sub?.symbols || activeCategory?.symbols || [];
+    if (q) {
+      return symbols.filter(
+        (s) => s.symbol.toLowerCase().includes(q) || s.displayName?.toLowerCase().includes(q),
+      );
     }
-    return symbols.filter(
-      (s) => s.symbol.toLowerCase().includes(q) || s.displayName?.toLowerCase().includes(q),
-    );
-  }, [search, symbols, activeCategory]);
-
-  const favoriteSymbols = useMemo(
-    () => favorites.map((f) => symbols.find((s) => s.symbol === f)).filter(Boolean),
-    [favorites, symbols],
-  );
+    if (activeMarket === 'favorites') {
+      return favorites.map((f) => symbols.find((s) => s.symbol === f)).filter(Boolean);
+    }
+    return symbolsForCategory(activeCategory);
+  }, [search, symbols, activeCategory, activeMarket, favorites]);
 
   const current = symbols.find((s) => s.symbol === symbol);
 
@@ -101,7 +104,10 @@ export default function MarketPicker({ symbol, onSelect, trigger }) {
 
               <div className="market-picker-list">
                 {loading && <p className="text-muted">Loading live markets…</p>}
-                {(activeMarket === 'favorites' ? favoriteSymbols : filteredSymbols).map((s) => (
+                {!loading && filteredSymbols.length === 0 && (
+                  <p className="text-muted">No markets in this section.</p>
+                )}
+                {filteredSymbols.map((s) => (
                   <button
                     key={s.symbol}
                     type="button"
