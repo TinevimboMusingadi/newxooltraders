@@ -4,6 +4,7 @@ import { useActiveSymbols } from '../hooks/useActiveSymbols';
 import { useMarket } from '../context/MarketContext';
 import { buildCategoryTree } from '../lib/symbolGroups';
 import { useMarketCategories } from '../hooks/queries';
+import { formatSymbolLabel, isValidSymbol } from '../lib/symbolUtils';
 
 export default function MarketPicker({ symbol, onSelect, trigger }) {
   const [open, setOpen] = useState(false);
@@ -38,10 +39,13 @@ export default function MarketPicker({ symbol, onSelect, trigger }) {
   const current = symbols.find((s) => s.symbol === symbol);
 
   const pick = (sym) => {
+    if (!isValidSymbol(sym)) return;
     onSelect(sym);
     setOpen(false);
     setSearch('');
   };
+
+  const displayName = formatSymbolLabel(symbol, current?.displayName);
 
   return (
     <div className="market-picker">
@@ -51,8 +55,8 @@ export default function MarketPicker({ symbol, onSelect, trigger }) {
         </div>
       ) : (
         <button type="button" className="market-picker-trigger card" onClick={() => setOpen(true)}>
-          <span className="market-picker-name">{current?.displayName || symbol}</span>
-          <span className="mono text-muted">{symbol}</span>
+          <span className="market-picker-name">{displayName}</span>
+          {isValidSymbol(symbol) && <span className="mono text-muted">{symbol}</span>}
         </button>
       )}
 
