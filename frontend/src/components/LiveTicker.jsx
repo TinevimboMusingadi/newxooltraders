@@ -13,10 +13,10 @@ function formatPrice(symbol, quote) {
   return quote.toFixed(2);
 }
 
-export default function LiveTicker({ symbols: propSymbols }) {
+export default function LiveTicker({ symbols: propSymbols, defaultOpen = true }) {
   const { symbols: liveSymbols } = useActiveSymbols();
   const { favorites } = useMarket();
-  const { open, toggle } = usePanelState('live-ticker', true);
+  const { open, toggle } = usePanelState('live-ticker', defaultOpen);
 
   const SYMBOLS = useMemo(() => {
     if (propSymbols?.length) return propSymbols;
