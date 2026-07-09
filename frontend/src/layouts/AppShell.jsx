@@ -7,7 +7,6 @@ import {
   Zap,
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
-import AccountModeBanner from '../components/AccountModeBanner';
 import AppSidebar from '../components/AppSidebar';
 import LiveTicker from '../components/LiveTicker';
 import TradingFooter from '../components/TradingFooter';
@@ -25,31 +24,23 @@ const MOBILE_NAV = [
   { to: '/bots', label: 'Bots', icon: Bot },
 ];
 
-const SUMMARY_ROUTES = ['/trade', '/bulk', '/scanner', '/bots', '/speedbot', '/automated', '/builder', '/chart', '/dashboard'];
+const SUMMARY_ROUTES = ['/bulk', '/scanner', '/bots', '/speedbot', '/automated', '/builder', '/dashboard'];
 
 const TRADE_ROUTES = ['/trade', '/chart'];
 
 function AppShellContent() {
-  const { user } = useAuth();
   const location = useLocation();
-  const selectedAccount = user?.accounts?.find((a) => a.accountId === user?.selectedAccountId);
   const isTradeView = TRADE_ROUTES.some((p) => location.pathname.startsWith(p));
-  const showSummary = !isTradeView && SUMMARY_ROUTES.some((p) => location.pathname.startsWith(p));
+  const showSummary = SUMMARY_ROUTES.some((p) => location.pathname.startsWith(p));
 
   return (
-    <div className={`app-shell ${isTradeView ? 'app-shell--trade' : ''}`}>
+    <div className={`app-shell workspace-shell ${isTradeView ? 'app-shell--trade' : ''}`}>
       <Navbar variant="app" compact={isTradeView} />
-      {!isTradeView && <LiveTicker />}
+      <LiveTicker defaultOpen={!isTradeView} />
       <div className="app-shell-body">
         <AppSidebar />
         <div className="app-content-wrap">
-          <main className="app-main">
-            {!isTradeView && (
-              <AccountModeBanner
-                account={selectedAccount}
-                accountId={user?.selectedAccountId}
-              />
-            )}
+          <main className={`app-main ${isTradeView ? 'app-main--trade' : 'workspace-page'}`}>
             <Outlet />
           </main>
           {showSummary && <TradeSummaryPanel />}
