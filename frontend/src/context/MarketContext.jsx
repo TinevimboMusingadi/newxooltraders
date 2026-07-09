@@ -1,11 +1,18 @@
 import { createContext, useContext, useMemo, useState } from 'react';
+import { isValidSymbol, readStoredSymbol, sanitizeSymbol } from '../lib/symbolUtils';
 
 const MarketContext = createContext(null);
 
 export function MarketProvider({ children }) {
-  const [selectedSymbol, setSelectedSymbol] = useState(
-    () => localStorage.getItem('newxool_symbol') || '1HZ100V',
-  );
+  const [selectedSymbol, setSelectedSymbol] = useState(() => {
+    const clean = readStoredSymbol();
+    try {
+      localStorage.setItem('newxool_symbol', clean);
+    } catch {
+      /* ignore */
+    }
+    return clean;
+  });
   const [favorites, setFavorites] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('newxool_favorites') || '[]');
@@ -15,11 +22,14 @@ export function MarketProvider({ children }) {
   });
 
   const selectSymbol = (symbol) => {
-    setSelectedSymbol(symbol);
-    localStorage.setItem('newxool_symbol', symbol);
+    if (!isValidSymbol(symbol)) return;
+    const clean = sanitizeSymbol(symbol);
+    setSelectedSymbol(clean);
+    localStorage.setItem('newxool_symbol', clean);
   };
 
   const toggleFavorite = (symbol) => {
+    if (!isValidSymbol(symbol)) return;
     setFavorites((prev) => {
       const next = prev.includes(symbol) ? prev.filter((s) => s !== symbol) : [...prev, symbol];
       localStorage.setItem('newxool_favorites', JSON.stringify(next));
