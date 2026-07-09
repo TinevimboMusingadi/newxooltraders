@@ -19,6 +19,7 @@ import {
   isDemoAccount,
   setRealTradeConfirmation,
 } from '../lib/accountDisplay';
+import { sanitizeSymbol } from '../lib/symbolUtils';
 
 const CONTRACT_TYPES = [
   { id: 'DIGITEVEN', label: 'Even' },
@@ -31,7 +32,7 @@ export default function BulkTrader() {
   const { user } = useAuth();
   const { selectedSymbol, selectSymbol } = useMarket();
   const [params] = useSearchParams();
-  const symbol = params.get('symbol') || selectedSymbol;
+  const symbol = sanitizeSymbol(params.get('symbol') || selectedSymbol);
   const accountId = user?.selectedAccountId;
   const selectedAccount = user?.accounts?.find((a) => a.accountId === accountId);
 
