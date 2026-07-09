@@ -1,7 +1,7 @@
-import { useCallback, useState, useEffect, useRef } from 'react';
+import { useCallback, useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { RefreshCw, Wifi, WifiOff, ExternalLink, ChevronDown } from 'lucide-react';
+import { RefreshCw, Wifi, WifiOff, ChevronDown } from 'lucide-react';
 import RealTradeConfirmModal from '../components/RealTradeConfirmModal';
 import TraderLineChart from '../components/TraderLineChart';
 import LiveChart from '../components/LiveChart';
@@ -24,15 +24,19 @@ import {
   hasRealTradeConfirmation,
   isDemoAccount,
 } from '../lib/accountDisplay';
+import { formatSymbolLabel, isValidSymbol, sanitizeSymbol } from '../lib/symbolUtils';
 
 export default function Trade() {
   const { user, refresh } = useAuth();
   const { selectedSymbol, selectSymbol } = useMarket();
   const [params] = useSearchParams();
-  const symbol = params.get('symbol') || selectedSymbol;
+  const symbol = useMemo(
+    () => sanitizeSymbol(params.get('symbol') || selectedSymbol),
+    [params, selectedSymbol],
+  );
   const { symbols } = useActiveSymbols();
   const currentMeta = symbols.find((s) => s.symbol === symbol);
-  const { evenOddHistory } = useDigitStream(symbol);
+  const { evenOddHistory } = useDigitStream(isValidSymbol(symbol) ? symbol : null);
   const { recordTrade } = useTradeSession();
   const accountId = user?.selectedAccountId;
   const selectedAccount = user?.accounts?.find((a) => a.accountId === accountId);
@@ -61,10 +65,17 @@ export default function Trade() {
   } = useTradingWs();
 
   useEffect(() => {
-    if (params.get('symbol') && params.get('symbol') !== selectedSymbol) {
-      selectSymbol(params.get('symbol'));
+    const fromUrl = params.get('symbol');
+    if (isValidSymbol(fromUrl) && fromUrl !== selectedSymbol) {
+      selectSymbol(fromUrl);
     }
   }, [params, selectedSymbol, selectSymbol]);
+
+  useEffect(() => {
+    if (!isValidSymbol(selectedSymbol)) {
+      selectSymbol(symbol);
+    }
+  }, [selectedSymbol, symbol, selectSymbol]);
 
   useEffect(() => {
     setLastPrice(null);
@@ -83,10 +94,10 @@ export default function Trade() {
   }, [connected, openContracts, subscribeOpenContract]);
 
   const executeTrade = useCallback(
-    async (params) => {
+    async (tradeParams) => {
       setTrading(true);
       try {
-        const proposal = await getProposal(params);
+        const proposal = await getProposal(tradeParams);
         const proposalId = proposal.proposal?.id;
         const askPrice = proposal.proposal?.ask_price;
         const payout = proposal.proposal?.payout;
@@ -96,19 +107,19 @@ export default function Trade() {
         const result = await buyContract(String(proposalId), askPrice);
         const contractId = result.buy?.contract_id;
         setLastTrade({
-          symbol: params.symbol,
-          contractType: params.contractType,
+          symbol: tradeParams.symbol,
+          contractType: tradeParams.contractType,
           stake: askPrice,
           payout,
           contractId,
           at: Date.now(),
         });
-        recordTrade({ message: 'Contract bought', type: 'trade', symbol: params.symbol, contractType: params.contractType });
-        toast.success(`Trade opened: ${params.symbol} ${params.contractType}`, {
+        recordTrade({ message: 'Contract bought', type: 'trade', symbol: tradeParams.symbol, contractType: tradeParams.contractType });
+        toast.success(`Trade opened: ${tradeParams.symbol} ${tradeParams.contractType}`, {
           description: `Stake: ${askPrice} ${balance?.currency || 'USD'}`,
         });
         try {
-          await api.reportCopyTrade({ ...params, contractId });
+          await api.reportCopyTrade({ ...tradeParams, contractId });
         } catch { /* not a provider */ }
         await refresh();
         return result;
@@ -119,18 +130,18 @@ export default function Trade() {
         setTrading(false);
       }
     },
-    [getProposal, buyContract, refresh, balance],
+    [getProposal, buyContract, refresh, balance, recordTrade],
   );
 
   const handleTrade = useCallback(
-    async (params) => {
+    async (tradeParams) => {
       const isReal = selectedAccount && !isDemoAccount(selectedAccount);
       if (isReal && !hasRealTradeConfirmation()) {
-        setPendingTrade(params);
+        setPendingTrade(tradeParams);
         setShowRealConfirm(true);
         return;
       }
-      return executeTrade(params);
+      return executeTrade(tradeParams);
     },
     [selectedAccount, executeTrade],
   );
@@ -190,9 +201,42 @@ export default function Trade() {
 
   const accountMode = getAccountMode(selectedAccount, accountId);
   const { open: statsOpen, toggle: toggleStats } = usePanelState('trade-stats', false);
-  const { open: lastTradeOpen, toggle: toggleLastTrade } = usePanelState('last-trade', true);
+  const { open: lastTradeOpen, toggle: toggleLastTrade } = usePanelState('last-trade', false);
 
   const showConnecting = accountId && !connected && !error;
+  const symbolLabel = formatSymbolLabel(symbol, currentMeta?.displayName);
+  const priceDecimals = symbol?.startsWith('frx') ? 4 : 2;
+
+  const assetPicker = (
+    <MarketPicker
+      symbol={symbol}
+      onSelect={selectSymbol}
+      trigger={(
+        <div className="trader-asset-picker">
+          <div className="trader-asset-picker-row">
+            <strong>{symbolLabel}</strong>
+            <ChevronDown size={12} className="trader-asset-chevron" />
+          </div>
+          <span className="mono trader-asset-price">
+            {lastPrice != null ? lastPrice.toFixed(priceDecimals) : '—'}
+          </span>
+        </div>
+      )}
+    />
+  );
+
+  const chartToolbar = (
+    <div className="trader-chart-toolbar">
+      <div className="chart-type-toggle">
+        <button type="button" className={chartType === 'line' ? 'active' : ''} onClick={() => setChartType('line')}>Line</button>
+        <button type="button" className={chartType === 'candle' ? 'active' : ''} onClick={() => setChartType('candle')}>Candles</button>
+      </div>
+      <div className={`connection-badge compact ${connected ? 'online' : 'offline'}`}>
+        {connected ? <Wifi size={12} /> : <WifiOff size={12} />}
+        {connected ? 'Live' : showConnecting ? '…' : 'Off'}
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -230,72 +274,16 @@ export default function Trade() {
               onPriceUpdate={setLastPrice}
               growthRate={growthRate}
               showAccumulatorBand={tradeMode === 'accumulator'}
-              overlay={(
-                <MarketPicker
-                  symbol={symbol}
-                  onSelect={selectSymbol}
-                  trigger={(
-                    <div className="trader-asset-picker">
-                      <div className="trader-asset-picker-row">
-                        <strong>{currentMeta?.displayName || symbol}</strong>
-                        <ChevronDown size={12} className="trader-asset-chevron" />
-                      </div>
-                      <span className="mono trader-asset-price">
-                        {lastPrice != null ? lastPrice.toFixed(symbol?.startsWith('frx') ? 4 : 2) : '—'}
-                      </span>
-                    </div>
-                  )}
-                />
-              )}
-              toolbarOverlay={(
-                <div className="trader-chart-toolbar">
-                  <div className="chart-type-toggle">
-                    <button type="button" className={chartType === 'line' ? 'active' : ''} onClick={() => setChartType('line')}>Line</button>
-                    <button type="button" className={chartType === 'candle' ? 'active' : ''} onClick={() => setChartType('candle')}>Candles</button>
-                  </div>
-                  <button type="button" className="btn btn-ghost btn-xs trader-toolbar-btn" onClick={() => window.open(`https://charts.deriv.com/?symbol=${encodeURIComponent(symbol)}`, '_blank', 'noopener')}>
-                    <ExternalLink size={12} /> TV
-                  </button>
-                  <div className={`connection-badge compact ${connected ? 'online' : 'offline'}`}>
-                    {connected ? <Wifi size={12} /> : <WifiOff size={12} />}
-                    {connected ? 'Live' : showConnecting ? '…' : 'Off'}
-                  </div>
-                </div>
-              )}
+              overlay={assetPicker}
+              toolbarOverlay={chartToolbar}
             />
           ) : (
             <div className="trade-candle-wrap">
               <div className="trader-chart-overlays trade-candle-overlays">
-                <MarketPicker
-                  symbol={symbol}
-                  onSelect={selectSymbol}
-                  trigger={(
-                    <div className="trader-asset-picker">
-                      <div className="trader-asset-picker-row">
-                        <strong>{currentMeta?.displayName || symbol}</strong>
-                        <ChevronDown size={12} className="trader-asset-chevron" />
-                      </div>
-                      <span className="mono trader-asset-price">
-                        {lastPrice != null ? lastPrice.toFixed(symbol?.startsWith('frx') ? 4 : 2) : '—'}
-                      </span>
-                    </div>
-                  )}
-                />
-                <div className="trader-chart-toolbar">
-                  <div className="chart-type-toggle">
-                    <button type="button" className={chartType === 'line' ? 'active' : ''} onClick={() => setChartType('line')}>Line</button>
-                    <button type="button" className={chartType === 'candle' ? 'active' : ''} onClick={() => setChartType('candle')}>Candles</button>
-                  </div>
-                  <button type="button" className="btn btn-ghost btn-xs trader-toolbar-btn" onClick={() => window.open(`https://charts.deriv.com/?symbol=${encodeURIComponent(symbol)}`, '_blank', 'noopener')}>
-                    <ExternalLink size={12} /> TV
-                  </button>
-                  <div className={`connection-badge compact ${connected ? 'online' : 'offline'}`}>
-                    {connected ? <Wifi size={12} /> : <WifiOff size={12} />}
-                    {connected ? 'Live' : showConnecting ? '…' : 'Off'}
-                  </div>
-                </div>
+                {assetPicker}
+                {chartToolbar}
               </div>
-              <LiveChart symbol={symbol} onPriceUpdate={setLastPrice} fill />
+              <LiveChart symbol={symbol} onPriceUpdate={setLastPrice} fill hideToolbar />
             </div>
           )}
           <CollapsiblePanel
@@ -309,23 +297,25 @@ export default function Trade() {
             <EvenOddStrip history={evenOddHistory} max={16} />
           </CollapsiblePanel>
         </div>
-        <TradePanel
-          symbol={symbol}
-          currency={selectedAccount?.currency || balance?.currency || 'USD'}
-          connected={connected}
-          balance={balance}
-          openContracts={openContracts}
-          onTrade={handleTrade}
-          getProposal={getProposal}
-          trading={trading}
-          lastPrice={lastPrice}
-          accountMode={accountMode.mode}
-          growthRate={growthRate}
-          onGrowthRateChange={setGrowthRate}
-          mode={tradeMode}
-          onModeChange={setTradeMode}
-          compact
-        />
+        <aside className="trade-panel-column">
+          <TradePanel
+            symbol={symbol}
+            currency={selectedAccount?.currency || balance?.currency || 'USD'}
+            connected={connected}
+            balance={balance}
+            openContracts={openContracts}
+            onTrade={handleTrade}
+            getProposal={getProposal}
+            trading={trading}
+            lastPrice={lastPrice}
+            accountMode={accountMode.mode}
+            growthRate={growthRate}
+            onGrowthRateChange={setGrowthRate}
+            mode={tradeMode}
+            onModeChange={setTradeMode}
+            compact
+          />
+        </aside>
       </div>
 
       {lastTrade && (
