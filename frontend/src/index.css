@@ -3296,4 +3296,181 @@ button {
     position: static;
     max-height: none;
   }
+
+  .trade-panel-column {
+    position: static;
+    height: auto;
+  }
 }
+
+/* === Slack-style workspace shell === */
+.workspace-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding-top: 56px;
+}
+
+.workspace-shell .app-shell-body {
+  flex: 1;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  gap: 0;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.workspace-shell .app-sidebar {
+  top: 56px;
+  height: calc(100vh - 56px);
+  position: sticky;
+  align-self: stretch;
+  border-right: 1px solid var(--border-subtle);
+  width: 200px;
+  padding: 0;
+}
+
+.workspace-shell .app-sidebar.collapsed {
+  width: 52px;
+}
+
+.workspace-shell .sidebar-nav {
+  height: 100%;
+  border: none;
+  border-radius: 0;
+  background: rgba(12, 10, 22, 0.72);
+  backdrop-filter: blur(16px);
+  padding: 8px 6px;
+  overflow-y: auto;
+}
+
+.workspace-shell .app-content-wrap {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.workspace-page {
+  padding: 20px 24px 88px;
+  max-width: 1200px;
+}
+
+.app-main--trade {
+  padding: 0;
+  max-width: none;
+}
+
+.chart-empty-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  z-index: 2;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.trade-panel-column {
+  position: sticky;
+  top: 56px;
+  align-self: start;
+  height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.trade-panel-column .trade-panel-compact {
+  flex: 1;
+  overflow-y: auto;
+  position: static;
+  max-height: none;
+  height: 100%;
+}
+
+.trade-panel-symbol {
+  font-size: 0.72rem;
+  margin-top: 2px;
+}
+
+.workspace-shell .trade-summary-panel {
+  top: 56px;
+  max-height: calc(100vh - 120px);
+  margin: 0;
+  border-left: 1px solid var(--border-subtle);
+  border-radius: 0;
+  background: rgba(12, 10, 22, 0.72);
+}
+
+.workspace-shell .trade-summary-panel.collapsed {
+  border-left: 1px solid var(--border-subtle);
+}
+
+.workspace-shell .app-ticker {
+  position: sticky;
+  top: 56px;
+  z-index: 30;
+  background: rgba(12, 10, 22, 0.92);
+}
+
+.workspace-shell .app-ticker.collapsed {
+  min-height: 30px;
+}
+
+.app-shell--trade {
+  padding-top: 52px;
+}
+
+.app-shell--trade .app-sidebar {
+  top: 52px;
+  height: calc(100vh - 52px);
+}
+
+.app-shell--trade .app-ticker {
+  top: 52px;
+}
+
+.trade-page .trade-layout {
+  grid-template-columns: minmax(0, 1fr) 288px;
+  gap: 0;
+  min-height: calc(100vh - 82px);
+}
+
+.trade-page .trade-chart-section,
+.trade-page .trader-chart-section {
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0;
+}
+
+.trade-page .trade-panel-compact {
+  border: none;
+  border-radius: 0;
+  background: rgba(12, 10, 22, 0.55);
+}
+
+.page-header-block {
+  margin-bottom: 16px;
+}
+
+.dashboard-page .dashboard-actions {
+  gap: 12px;
+}
+
+.dashboard-action-card {
+  padding: 16px;
+}
+
+@media (max-width: 768px) {
+  .workspace-page {
+    padding: 16px 12px 96px;
+  }
+
+  .workspace-shell .app-sidebar {
+    display: none;
+  }
+}
+
