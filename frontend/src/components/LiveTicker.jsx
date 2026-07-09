@@ -1,20 +1,14 @@
 import { useEffect, useState, useMemo } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { filterVolatilitySymbols } from '../lib/symbolGroups';
+import { filterVolatilitySymbols, priceDecimals } from '../lib/symbolGroups';
 import { useActiveSymbols } from '../hooks/useActiveSymbols';
 import { useMarket } from '../context/MarketContext';
 import { usePanelState } from '../hooks/usePanelState';
 
 const PUBLIC_WS = 'wss://api.derivws.com/trading/v1/options/ws/public';
 
-function formatPrice(symbol, quote) {
-  if (symbol.startsWith('frx')) return quote.toFixed(4);
-  if (symbol.startsWith('cry')) return quote.toFixed(2);
-  return quote.toFixed(2);
-}
-
 export default function LiveTicker({ symbols: propSymbols, defaultOpen = true }) {
-  const { symbols: liveSymbols } = useActiveSymbols();
+  const { symbols: liveSymbols, loading } = useActiveSymbols();
   const { favorites } = useMarket();
   const { open, toggle } = usePanelState('live-ticker', defaultOpen);
 
@@ -28,7 +22,11 @@ export default function LiveTicker({ symbols: propSymbols, defaultOpen = true })
       if (seen.has(s.symbol)) return false;
       seen.add(s.symbol);
       return true;
-    }).slice(0, 8).map((s) => ({ symbol: s.symbol, label: s.displayName || s.symbol }));
+    }).slice(0, 8).map((s) => ({
+      symbol: s.symbol,
+      label: s.displayName || s.symbol,
+      pip: s.pip,
+    }));
   }, [propSymbols, liveSymbols, favorites]);
 
   const [ticks, setTicks] = useState({});
@@ -76,37 +74,61 @@ export default function LiveTicker({ symbols: propSymbols, defaultOpen = true })
     };
   }, [SYMBOLS.map((s) => s.symbol).join(','), open]);
 
+  if (!open) {
+    return (
+      <div className="ticker-wrapper app-ticker collapsed">
+        <button type="button" className="ticker-toggle" onClick={toggle} aria-expanded={false}>
+          <span className="ticker-toggle-label">Markets</span>
+          <ChevronDown size={14} />
+        </button>
+      </div>
+    );
+  }
+
+  if (loading && !SYMBOLS.length) {
+    return (
+      <div className="ticker-wrapper app-ticker open">
+        <button type="button" className="ticker-toggle" onClick={toggle} aria-expanded>
+          <span className="ticker-toggle-label">Markets</span>
+          <ChevronUp size={14} />
+        </button>
+        <div className="ticker-content">
+          <span className="ticker-item text-muted">Loading live markets…</span>
+        </div>
+      </div>
+    );
+  }
+
   if (!SYMBOLS.length) return null;
 
-  const items = SYMBOLS.map(({ symbol, label }) => {
+  const items = SYMBOLS.map(({ symbol, label, pip }) => {
     const t = ticks[symbol];
+    const price = t?.quote != null ? Number(t.quote).toFixed(priceDecimals(symbol, pip)) : null;
     return {
       label,
-      price: t?.quote != null ? formatPrice(symbol, t.quote) : '…',
+      price: price ?? '…',
       up: t?.up ?? true,
       live: t?.quote != null,
     };
   });
 
   return (
-    <div className={`ticker-wrapper app-ticker ${open ? 'open' : 'collapsed'}`}>
-      <button type="button" className="ticker-toggle" onClick={toggle} aria-expanded={open}>
+    <div className="ticker-wrapper app-ticker open">
+      <button type="button" className="ticker-toggle" onClick={toggle} aria-expanded>
         <span className="ticker-toggle-label">Markets</span>
-        {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        <ChevronUp size={14} />
       </button>
-      {open && (
-        <div className="ticker-content">
-          {[...items, ...items].map((item, index) => (
-            <div className="ticker-item" key={index}>
-              <span className="ticker-symbol">{item.label}</span>
-              <span className="ticker-price">{item.price}</span>
-              <span className={`ticker-change ${item.up ? 'up' : 'down'}`}>
-                {item.up ? '▲' : '▼'} {item.live ? 'Live' : '…'}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="ticker-content">
+        {[...items, ...items].map((item, index) => (
+          <div className="ticker-item" key={index}>
+            <span className="ticker-symbol">{item.label}</span>
+            <span className="ticker-price">{item.price}</span>
+            <span className={`ticker-change ${item.up ? 'up' : 'down'}`}>
+              {item.up ? '▲' : '▼'} {item.live ? 'Live' : '…'}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
