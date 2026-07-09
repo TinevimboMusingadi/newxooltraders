@@ -11,16 +11,19 @@ import {
 
 const router = Router();
 
+const SYMBOLS_CACHE_KEY = 'active_symbols_v2';
+
 async function getLiveSymbolsResponse() {
-  const cached = await cacheGet('active_symbols');
-  if (cached) return cached;
+  const cached = await cacheGet(SYMBOLS_CACHE_KEY);
+  if (cached?.symbols?.length && cached.symbols[0]?.symbol) return cached;
 
   const raw = await fetchActiveSymbols();
+  const symbols = raw.map(mapActiveSymbol).filter((s) => s.symbol);
   const response = {
-    symbols: raw.map(mapActiveSymbol),
+    symbols,
     cachedAt: new Date().toISOString(),
   };
-  await cacheSet('active_symbols', response, 300);
+  await cacheSet(SYMBOLS_CACHE_KEY, response, 300);
   return response;
 }
 
@@ -28,7 +31,7 @@ router.get('/symbols', (_req, res) => {
   res.redirect(307, '/api/markets/symbols/live');
 });
 
-router.get('/symbols/live', cacheMiddleware({ ttl: 300, prefix: 'mkt' }), async (_req, res) => {
+router.get('/symbols/live', cacheMiddleware({ ttl: 300, prefix: 'mkt-v2' }), async (_req, res) => {
   try {
     const response = await getLiveSymbolsResponse();
     res.json(response);
@@ -37,15 +40,15 @@ router.get('/symbols/live', cacheMiddleware({ ttl: 300, prefix: 'mkt' }), async 
   }
 });
 
-router.get('/categories', cacheMiddleware({ ttl: 300, prefix: 'mkt-cat' }), async (_req, res) => {
+router.get('/categories', cacheMiddleware({ ttl: 300, prefix: 'mkt-cat-v2' }), async (_req, res) => {
   try {
-    const cached = await cacheGet('market_categories');
-    if (cached) return res.json(cached);
+    const cached = await cacheGet('market_categories_v2');
+    if (cached?.categories?.length) return res.json(cached);
 
     const { symbols } = await getLiveSymbolsResponse();
     const categories = buildCategoriesFromSymbols(symbols);
     const response = { categories, cachedAt: new Date().toISOString() };
-    await cacheSet('market_categories', response, 300);
+    await cacheSet('market_categories_v2', response, 300);
     res.json(response);
   } catch (err) {
     res.status(502).json({ error: err.message || 'Failed to fetch market categories' });
