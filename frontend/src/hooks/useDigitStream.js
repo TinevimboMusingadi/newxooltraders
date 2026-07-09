@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { computeDigitDistribution, extractLastDigit } from '../lib/digitsEngine';
+import { isValidSymbol } from '../lib/symbolUtils';
 
 const PUBLIC_WS = 'wss://api.derivws.com/trading/v1/options/ws/public';
 
@@ -23,7 +24,7 @@ export function useDigitStream(symbol, { historySize = 20, pip = 2 } = {}) {
   }, [historySize, pip]);
 
   useEffect(() => {
-    if (!symbol) return;
+    if (!isValidSymbol(symbol)) return;
     quotesRef.current = [];
     setQuote(null);
     setLastDigit(null);
