@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { api } from '../lib/api';
 import { parseContractsFor, pickDefaultDuration } from '../lib/contractsFor';
+import { isValidSymbol } from '../lib/symbolUtils';
 
 const cache = new Map();
 
@@ -11,7 +12,7 @@ export function useContractsFor(symbol, contractTypes = []) {
   const typesKey = contractTypes.join(',');
 
   useEffect(() => {
-    if (!symbol) return;
+    if (!isValidSymbol(symbol)) return;
     let cancelled = false;
     const cacheKey = `${symbol}:${typesKey}`;
 
@@ -47,7 +48,7 @@ export function useContractsFor(symbol, contractTypes = []) {
     error,
     available: data?.available || [],
     allowedDurations: data?.allowedDurations || [],
-    growthRates: data?.growthRates || [1, 2, 3, 4, 5],
+    growthRates: data?.growthRates || [],
     maxPayout: data?.maxPayout,
     maxTicks: data?.maxTicks,
     defaultDuration,
