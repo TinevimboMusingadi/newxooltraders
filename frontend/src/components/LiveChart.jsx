@@ -3,8 +3,9 @@ import { createChart, CrosshairMode, CandlestickSeries, LineStyle } from 'lightw
 import { GRANULARITIES, DEFAULT_GRANULARITY } from '../lib/chartUtils';
 import { useTheme } from '../context/ThemeContext';
 import { ChartSkeleton } from './ui/Skeleton';
+import { formatSymbolLabel, isValidSymbol } from '../lib/symbolUtils';
 
-export default function LiveChart({ symbol, onPriceUpdate, height = 420, fill = false }) {
+export default function LiveChart({ symbol, onPriceUpdate, height = 420, fill = false, hideToolbar = false }) {
   const containerRef = useRef(null);
   const wrapRef = useRef(null);
   const chartRef = useRef(null);
@@ -97,7 +98,10 @@ export default function LiveChart({ symbol, onPriceUpdate, height = 420, fill = 
   }, [isDark, chartHeight, fill]);
 
   useEffect(() => {
-    if (!symbol || !seriesRef.current) return;
+    if (!isValidSymbol(symbol) || !seriesRef.current) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setOhlc(null);
     setCurrentPrice(null);
@@ -236,29 +240,34 @@ export default function LiveChart({ symbol, onPriceUpdate, height = 420, fill = 
       }
     : null);
 
+  const chartReady = isValidSymbol(symbol);
+  const symbolLabel = formatSymbolLabel(symbol);
+
   return (
     <div ref={wrapRef} className={`live-chart-wrap ${fill ? 'live-chart-fill' : ''}`}>
-      <div className="chart-toolbar">
-        <div className="chart-toolbar-left">
-          <span className="chart-symbol-label">{symbol}</span>
-          {currentPrice != null && (
-            <span className="chart-live-price mono">{currentPrice.toFixed(4)}</span>
-          )}
+      {!hideToolbar && (
+        <div className="chart-toolbar">
+          <div className="chart-toolbar-left">
+            <span className="chart-symbol-label">{symbolLabel}</span>
+            {currentPrice != null && (
+              <span className="chart-live-price mono">{currentPrice.toFixed(4)}</span>
+            )}
+          </div>
+          <div className="chart-toolbar-tf">
+            {GRANULARITIES.map((g) => (
+              <button
+                key={g.label}
+                type="button"
+                className={`tf-btn ${granularity.value === g.value ? 'active' : ''}`}
+                onClick={() => setGranularity(g)}
+              >
+                {g.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="chart-toolbar-tf">
-          {GRANULARITIES.map((g) => (
-            <button
-              key={g.label}
-              type="button"
-              className={`tf-btn ${granularity.value === g.value ? 'active' : ''}`}
-              onClick={() => setGranularity(g)}
-            >
-              {g.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      {displayOhlc && (
+      )}
+      {!hideToolbar && displayOhlc && (
         <div className="chart-ohlc-bar">
           <span>O <strong className="mono">{displayOhlc.open?.toFixed(4)}</strong></span>
           <span>H <strong className="mono">{displayOhlc.high?.toFixed(4)}</strong></span>
@@ -267,7 +276,12 @@ export default function LiveChart({ symbol, onPriceUpdate, height = 420, fill = 
         </div>
       )}
       <div className="chart-container">
-        {loading && (
+        {!chartReady && (
+          <div className="chart-empty-state">
+            <p>Select a market to load live candles</p>
+          </div>
+        )}
+        {chartReady && loading && (
           <div className="chart-loading">
             <ChartSkeleton />
           </div>
