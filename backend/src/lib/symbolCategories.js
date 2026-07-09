@@ -7,25 +7,18 @@ const MARKET_LABELS = {
   stocks: 'Stocks',
 };
 
-export function mapActiveSymbol(s) {
-  return {
-    symbol: s.symbol,
-    displayName: s.display_name || s.symbol,
-    market: s.market,
-    submarket: s.submarket,
-    marketDisplay: s.market_display_name || s.market,
-    submarketDisplay: s.submarket_display_name || s.submarket,
-    category: mapCategory(s.market),
-    exchangeOpen: s.exchange_is_open,
-    pip: s.pip,
-    spot: s.spot,
-    spotAge: s.spot_age,
-  };
+function isVolatilitySymbol(s) {
+  const sub = (s.submarket || '').toLowerCase();
+  const sym = s.symbol || '';
+  return /volatility|random/i.test(sub) || /^R_|^1HZ/i.test(sym);
 }
 
-function mapCategory(market) {
+function mapCategoryFromSymbol(s) {
+  const market = s.market;
+  if (market === 'synthetic_index') {
+    return isVolatilitySymbol(s) ? 'volatility' : 'synthetic';
+  }
   const map = {
-    synthetic_index: 'volatility',
     forex: 'forex',
     cryptocurrency: 'crypto',
     indices: 'indices',
@@ -35,11 +28,31 @@ function mapCategory(market) {
   return map[market] || market || 'other';
 }
 
+export function mapActiveSymbol(s) {
+  return {
+    symbol: s.symbol,
+    displayName: s.display_name || s.displayName || s.symbol,
+    market: s.market,
+    submarket: s.submarket,
+    marketDisplay: s.market_display_name || s.marketDisplay || s.market,
+    submarketDisplay: s.submarket_display_name || s.submarketDisplay || s.submarket,
+    category: mapCategoryFromSymbol(s),
+    exchangeOpen: s.exchange_is_open,
+    pip: s.pip,
+    spot: s.spot,
+    spotAge: s.spot_age,
+  };
+}
+
+export function filterVolatilitySymbols(symbols) {
+  return symbols.filter((s) => s.category === 'volatility' || isVolatilitySymbol(s));
+}
+
 export function buildCategoriesFromSymbols(symbols) {
   const tree = {};
 
   for (const raw of symbols) {
-    const s = typeof raw.symbol === 'string' ? raw : mapActiveSymbol(raw);
+    const s = typeof raw.symbol === 'string' && raw.displayName ? raw : mapActiveSymbol(raw);
     const market = s.market || 'other';
     const submarket = s.submarket || 'default';
 
