@@ -9,6 +9,7 @@ import {
 import { useTheme } from '../context/ThemeContext';
 import { ChartSkeleton } from './ui/Skeleton';
 import { isValidSymbol } from '../lib/symbolUtils';
+import { useChartToolkit } from '../hooks/useChartToolkit';
 
 const PUBLIC_WS = 'wss://api.derivws.com/trading/v1/options/ws/public';
 const MAX_POINTS = 120;
@@ -31,6 +32,10 @@ export default function TraderLineChart({
   showAccumulatorBand = true,
   overlay,
   toolbarOverlay,
+  indicators = {},
+  drawMode = 'none',
+  drawings = [],
+  setDrawings,
 }) {
   const stageRef = useRef(null);
   const containerRef = useRef(null);
@@ -49,8 +54,20 @@ export default function TraderLineChart({
   const [loading, setLoading] = useState(true);
   const [currentPrice, setCurrentPrice] = useState(null);
   const [prevPrice, setPrevPrice] = useState(null);
+  const [dataVersion, setDataVersion] = useState(0);
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+
+  const { refreshIndicators } = useChartToolkit({
+    chartRef,
+    mainSeriesRef: seriesRef,
+    pointsRef,
+    indicators,
+    drawMode,
+    drawings,
+    setDrawings,
+    dataVersion,
+  });
 
   const updatePriceLine = useCallback((series, key, price, options) => {
     const lines = priceLinesRef.current;
@@ -277,6 +294,10 @@ export default function TraderLineChart({
       onPriceUpdate?.(quote);
       syncOverlays(quote);
       chartRef.current?.timeScale().scrollToRealTime();
+      if (points.length % 5 === 0) {
+        setDataVersion((v) => v + 1);
+        refreshIndicators();
+      }
     };
 
     ws.onopen = () => {
@@ -305,6 +326,7 @@ export default function TraderLineChart({
         onPriceUpdate?.(last);
         syncOverlays(last);
         setLoading(false);
+        setDataVersion((v) => v + 1);
       }
       if (data.msg_type === 'tick' && data.tick) {
         pushPoint(data.tick.epoch, Number(data.tick.quote));
@@ -327,7 +349,7 @@ export default function TraderLineChart({
       }
       ws.close();
     };
-  }, [symbol, onPriceUpdate, syncOverlays, clearAllPriceLines]);
+  }, [symbol, onPriceUpdate, syncOverlays, clearAllPriceLines, refreshIndicators]);
 
   useEffect(() => {
     if (currentPrice != null) syncOverlays(currentPrice);
