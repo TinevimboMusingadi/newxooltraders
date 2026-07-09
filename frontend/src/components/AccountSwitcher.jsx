@@ -3,6 +3,7 @@ import { ChevronDown, LogOut, RefreshCw } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
 import { getAccountDisplayId, getAccountMode, isDemoAccount } from '../lib/accountDisplay';
+import { currencyFlag, formatBalance } from '../lib/currencyFlags';
 
 export default function AccountSwitcher() {
   const { user, refresh, logout } = useAuth();
@@ -56,14 +57,13 @@ export default function AccountSwitcher() {
 
   const bal = selected?.balance;
   const currency = selected?.currency || 'USD';
+  const flag = currencyFlag(currency);
 
   return (
     <div className="account-switcher" ref={ref}>
       <button type="button" className="account-switcher-trigger" onClick={() => setOpen(!open)}>
-        <span className={`nav-account-badge ${mode.badgeClass}`}>{currency}</span>
-        <span className="account-balance mono">
-          {bal != null ? Number(bal).toLocaleString(undefined, { minimumFractionDigits: 2 }) : '—'} {currency}
-        </span>
+        <span className="account-currency-flag" aria-hidden>{flag}</span>
+        <span className="account-balance mono">{formatBalance(bal, currency)}</span>
         <ChevronDown size={14} className={open ? 'chevron-up' : ''} />
       </button>
 
@@ -80,6 +80,7 @@ export default function AccountSwitcher() {
             )}
             {list.map((a) => {
               const m = getAccountMode(a, a.accountId);
+              const cur = a.currency || 'USD';
               return (
                 <button
                   key={a.accountId}
@@ -92,7 +93,9 @@ export default function AccountSwitcher() {
                     <strong>{m.shortLabel}</strong>
                     <span className="text-muted">{getAccountDisplayId(a, a.accountId)}</span>
                   </div>
-                  <span className="mono">{a.balance != null ? Number(a.balance).toFixed(2) : '—'} {a.currency}</span>
+                  <span className="mono account-row-balance">
+                    <span aria-hidden>{currencyFlag(cur)}</span> {formatBalance(a.balance, cur)}
+                  </span>
                 </button>
               );
             })}
