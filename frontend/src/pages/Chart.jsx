@@ -1,6 +1,7 @@
 import LiveChart from '../components/LiveChart';
 import { useMarket } from '../context/MarketContext';
 import { useState } from 'react';
+import { formatSymbolLabel } from '../lib/symbolUtils';
 
 export default function ChartPage() {
   const { selectedSymbol } = useMarket();
@@ -15,9 +16,9 @@ export default function ChartPage() {
       <div className="page-header-block chart-page-header">
         <div>
           <h1 className="heading-lg">Chart</h1>
-          <p className="text-secondary">{selectedSymbol} · live candles</p>
+          <p className="text-secondary">{formatSymbolLabel(selectedSymbol)} · live candles</p>
         </div>
-        <button type="button" className="btn btn-primary" onClick={openTradingView}>Open TradingView</button>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={openTradingView}>External chart</button>
       </div>
       <div className="chart-page-main card">
         <LiveChart symbol={selectedSymbol} onPriceUpdate={setPrice} />
