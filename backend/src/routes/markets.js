@@ -5,6 +5,7 @@ import { derivWsRequest } from '../lib/derivWs.js';
 import {
   buildCategoriesFromSymbols,
   fetchActiveSymbols,
+  filterVolatilitySymbols,
   mapActiveSymbol,
 } from '../lib/symbolCategories.js';
 
@@ -70,9 +71,7 @@ router.get('/signals/live', cacheMiddleware({ ttl: 30, prefix: 'signals' }), asy
     if (cached) return res.json(cached);
 
     const { symbols } = await getLiveSymbolsResponse();
-    const volSymbols = symbols
-      .filter((s) => s.market === 'synthetic_index' && /volatility|random/i.test(s.submarket || ''))
-      .slice(0, 8);
+    const volSymbols = filterVolatilitySymbols(symbols).slice(0, 8);
 
     const { computeSignalsFromHistory } = await import('../services/signals.js');
     const signals = await computeSignalsFromHistory(volSymbols.map((s) => s.symbol));
