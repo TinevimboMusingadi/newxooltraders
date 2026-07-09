@@ -5,6 +5,7 @@ import { useMarket } from '../context/MarketContext';
 import { buildCategoryTree, symbolsForCategory } from '../lib/symbolGroups';
 import { useMarketCategories } from '../hooks/queries';
 import { formatSymbolLabel, isValidSymbol } from '../lib/symbolUtils';
+import { marketFlag } from '../lib/currencyFlags';
 
 export default function MarketPicker({ symbol, onSelect, trigger }) {
   const [open, setOpen] = useState(false);
@@ -114,7 +115,10 @@ export default function MarketPicker({ symbol, onSelect, trigger }) {
                     className={`market-picker-row ${s.symbol === symbol ? 'active' : ''}`}
                     onClick={() => pick(s.symbol)}
                   >
-                    <span>{s.displayName || s.symbol}</span>
+                    <span className="market-picker-name-row">
+                      <span className="market-flag" aria-hidden>{marketFlag(s.category, s.symbol)}</span>
+                      {s.displayName || s.symbol}
+                    </span>
                     <span className="market-picker-row-actions">
                       <span className="mono text-muted">{s.symbol}</span>
                       <Star
