@@ -58,7 +58,9 @@ export default function Dashboard() {
 
         {!isLoading && !signals.length && !error && (
           <p className="text-muted">
-            {data?.error ? `Signals temporarily unavailable (${data.error})` : 'No signals available — check Deriv connection.'}
+            {data?.error
+              ? `Signals unavailable: ${data.error}`
+              : 'No volatility signals right now — Deriv may be slow or markets are flat.'}
           </p>
         )}
       </section>
