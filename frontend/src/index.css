@@ -2380,61 +2380,7 @@ button {
 [data-tick="up"] { animation: tick-flash-up 0.6s ease-out; }
 [data-tick="down"] { animation: tick-flash-down 0.6s ease-out; }
 
-/* === Mobile bottom tab bar === */
-@media (max-width: 768px) {
-  .app-sidebar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    top: auto;
-    z-index: 100;
-    background: var(--bg-primary);
-    border-top: 1px solid var(--border-subtle);
-    border-right: none;
-    padding: 0;
-    width: 100%;
-    height: auto;
-  }
-
-  .sidebar-nav {
-    display: flex;
-    flex-direction: row;
-    overflow-x: auto;
-    gap: 0;
-    padding: 4px 8px;
-    justify-content: space-around;
-  }
-
-  .sidebar-link {
-    flex-direction: column;
-    gap: 2px;
-    padding: 6px 8px;
-    font-size: 0.65rem;
-    min-width: 48px;
-    align-items: center;
-  }
-
-  .sidebar-link span {
-    display: block;
-  }
-
-  .app-main {
-    padding-bottom: 70px;
-  }
-
-  .app-shell-body {
-    grid-template-columns: 1fr;
-  }
-
-  .history-summary {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .history-table {
-    font-size: 0.78rem;
-  }
-}
+/* === Mobile bottom tab bar (removed — use mobile-bottom-nav at 900px; see Mobile optimization block) === */
 
 /* === Sonner toast theme === */
 [data-sonner-toaster] {
@@ -3539,13 +3485,351 @@ button {
   padding: 16px;
 }
 
-@media (max-width: 768px) {
-  .workspace-page {
-    padding: 16px 12px 96px;
+/* === Mobile optimization (max-width: 900px — desktop untouched above 901px) === */
+@media (max-width: 900px) {
+  .app-shell,
+  .app-content-wrap,
+  .app-main,
+  .workspace-page,
+  .app-main--trade {
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
-  .workspace-shell .app-sidebar {
+  .app-main,
+  .workspace-page,
+  .app-main--trade {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .workspace-shell {
+    padding-top: 52px;
+  }
+
+  .navbar {
+    width: calc(100% - 16px);
+    top: 8px;
+    padding: 10px 0;
+  }
+
+  .navbar .container {
+    width: 100%;
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .navbar-compact {
+    width: calc(100% - 12px);
+    top: 4px;
+    padding: 6px 0;
+  }
+
+  .navbar-compact .logo {
+    font-size: 1rem;
+  }
+
+  .navbar-compact .logo img {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  .logo {
+    font-size: 1.1rem;
+    min-width: 0;
+    flex-shrink: 1;
+  }
+
+  .nav-links {
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .nav-account-badge {
+    font-size: 0.65rem;
+    padding: 2px 6px;
+  }
+
+  .account-switcher-trigger {
+    max-width: 52vw;
+    padding: 4px 8px;
+    gap: 4px;
+    font-size: 0.75rem;
+  }
+
+  .account-balance {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  .account-currency-flag {
+    flex-shrink: 0;
+  }
+
+  .trading-footer {
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    padding-left: 8px;
+    padding-right: 8px;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .trading-footer-center {
+    flex: 1 1 100%;
+    order: 3;
+    justify-content: center;
+  }
+
+  .risk-disclaimer-btn {
+    font-size: 0.68rem;
+    padding: 4px 8px;
+  }
+
+  .footer-run-btn {
+    min-width: 80px;
+    font-size: 0.72rem;
+  }
+
+  .mobile-bottom-nav {
+    bottom: calc(48px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .app-shell-body {
+    flex-direction: column;
+    padding: 0;
+  }
+
+  .workspace-shell .app-sidebar,
+  .app-sidebar {
     display: none;
+  }
+
+  .workspace-page {
+    padding: 16px 12px calc(96px + env(safe-area-inset-bottom, 0px));
+    max-width: 100%;
+  }
+
+  .app-shell--trade .app-shell-body {
+    padding: 4px 6px 8px;
+  }
+
+  /* Trade */
+  .trade-page .trade-layout {
+    grid-template-columns: 1fr;
+    min-height: auto;
+    gap: 8px;
+  }
+
+  .trade-panel-column,
+  .trade-panel-compact {
+    position: static;
+    height: auto;
+    max-height: none;
+    width: 100%;
+  }
+
+  .trader-chart-overlays {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 8px;
+  }
+
+  .trader-asset-picker {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .trader-chart-toolbar {
+    flex-wrap: wrap;
+    margin-left: 0;
+  }
+
+  .chart-type-toggle button {
+    padding: 4px 6px;
+    font-size: 0.65rem;
+  }
+
+  .trade-candle-overlays {
+    flex-wrap: wrap;
+    padding: 6px 8px;
+  }
+
+  /* Markets */
+  .markets-toolbar {
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+
+  .category-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+
+  .category-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .category-tabs .preset-btn {
+    flex-shrink: 0;
+  }
+
+  .markets-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+  }
+
+  /* MarketPicker */
+  .market-picker-overlay {
+    padding-top: 56px;
+    align-items: stretch;
+    justify-content: flex-start;
+  }
+
+  .market-picker-panel {
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 85vh;
+    border-radius: 0;
+    margin: 0;
+  }
+
+  .market-picker-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    min-height: 0;
+  }
+
+  .market-picker-sidebar {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-right: none;
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 6px;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .market-cat-item {
+    flex-shrink: 0;
+    width: auto;
+    white-space: nowrap;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+  }
+
+  .market-picker-list {
+    overflow-y: auto;
+    min-height: 0;
+  }
+
+  /* Other pages */
+  .apex-stats-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .scanner-grid,
+  .bulk-grid,
+  .bots-grid,
+  .copy-grid,
+  .automated-grid,
+  .dashboard-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .card,
+  .dashboard-action-card,
+  .market-card {
+    min-width: 0;
+  }
+
+  .history-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .history-table-wrap,
+  .history-table {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    display: block;
+    max-width: 100%;
+  }
+
+  .history-table {
+    font-size: 0.78rem;
+    min-width: 480px;
+  }
+
+  .trade-summary-panel.collapsed {
+    top: auto;
+    bottom: calc(104px + env(safe-area-inset-bottom, 0px));
+    right: 6px;
+  }
+
+  /* Ticker */
+  .app-ticker .ticker-content {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    animation: none;
+  }
+
+  .ticker-item {
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    gap: 6px;
+  }
+
+  .bulk-action-row {
+    grid-template-columns: 1fr;
+  }
+
+  .blockly-mount {
+    min-height: 360px;
+  }
+}
+
+@media (max-width: 480px) {
+  .markets-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .navbar .container {
+    padding: 0 8px;
+  }
+
+  .account-switcher-trigger {
+    max-width: 46vw;
+    font-size: 0.7rem;
+  }
+
+  .trading-footer-meta {
+    display: none;
+  }
+
+  .trade-summary-panel.collapsed {
+    display: none;
+  }
+
+  .apex-stats-row {
+    grid-template-columns: 1fr;
+  }
+
+  .history-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .page-header-block .heading-lg {
+    font-size: 1.35rem;
   }
 }
 
