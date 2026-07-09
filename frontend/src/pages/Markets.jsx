@@ -4,6 +4,7 @@ import { Star, TrendingUp, TrendingDown } from 'lucide-react';
 import { useActiveSymbols, useRealtimePrices } from '../hooks/useActiveSymbols';
 import { useMarket } from '../context/MarketContext';
 import { CATEGORIES } from '../lib/symbolGroups';
+import { isValidSymbol } from '../lib/symbolUtils';
 import { Skeleton } from '../components/ui/Skeleton';
 
 export default function Markets() {
@@ -24,6 +25,7 @@ export default function Markets() {
   const { prices } = useRealtimePrices(priceSymbols);
 
   const pick = (symbol) => {
+    if (!isValidSymbol(symbol)) return;
     selectSymbol(symbol);
     navigate('/trade');
   };
