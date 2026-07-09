@@ -8,6 +8,7 @@ import {
 } from 'lightweight-charts';
 import { useTheme } from '../context/ThemeContext';
 import { ChartSkeleton } from './ui/Skeleton';
+import { isValidSymbol } from '../lib/symbolUtils';
 
 const PUBLIC_WS = 'wss://api.derivws.com/trading/v1/options/ws/public';
 const MAX_POINTS = 120;
@@ -235,7 +236,10 @@ export default function TraderLineChart({
   }, [isDark, syncOverlays]);
 
   useEffect(() => {
-    if (!symbol || !seriesRef.current) return;
+    if (!isValidSymbol(symbol) || !seriesRef.current) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     setCurrentPrice(null);
@@ -329,6 +333,8 @@ export default function TraderLineChart({
     if (currentPrice != null) syncOverlays(currentPrice);
   }, [growthRate, showAccumulatorBand, currentPrice, syncOverlays]);
 
+  const chartReady = isValidSymbol(symbol);
+
   return (
     <div className="trader-line-chart">
       <div ref={stageRef} className="trader-chart-stage">
@@ -337,7 +343,12 @@ export default function TraderLineChart({
         {toolbarOverlay}
         </div>
         <div className="chart-container trader-chart-container">
-          {loading && (
+          {!chartReady && (
+            <div className="chart-empty-state">
+              <p>Select a market to load live ticks</p>
+            </div>
+          )}
+          {chartReady && loading && (
             <div className="chart-loading">
               <ChartSkeleton />
             </div>
