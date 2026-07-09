@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Star, TrendingUp, TrendingDown } from 'lucide-react';
 import { useActiveSymbols, useRealtimePrices } from '../hooks/useActiveSymbols';
 import { useMarket } from '../context/MarketContext';
-import { CATEGORIES } from '../lib/symbolGroups';
+import { CATEGORIES, categoryLabel, priceDecimals } from '../lib/symbolGroups';
 import { isValidSymbol } from '../lib/symbolUtils';
 import { Skeleton } from '../components/ui/Skeleton';
 
@@ -28,6 +28,11 @@ export default function Markets() {
     if (!isValidSymbol(symbol)) return;
     selectSymbol(symbol);
     navigate('/trade');
+  };
+
+  const formatPrice = (s, quote) => {
+    if (quote == null) return null;
+    return Number(quote).toFixed(priceDecimals(s.symbol, s.pip));
   };
 
   return (
@@ -75,21 +80,27 @@ export default function Markets() {
         <div className="auth-error-banner">Failed to load live markets: {error}</div>
       )}
 
-      {!loading && !error && (
+      {!loading && !error && filtered.length === 0 && (
+        <p className="text-muted markets-empty">No markets in this category. Try another tab or search.</p>
+      )}
+
+      {!loading && !error && filtered.length > 0 && (
         <div className="markets-grid">
           {filtered.map((s) => {
             const price = prices[s.symbol];
+            const formatted = formatPrice(s, price?.quote);
             return (
               <div key={s.symbol} className="market-card card" data-tick={price?.dir}>
                 <div className="market-card-top">
-                  <span className="market-category">{s.category}</span>
+                  <span className="market-category">{categoryLabel(s.category)}</span>
                   <button type="button" className="fav-btn" onClick={() => toggleFavorite(s.symbol)}>
                     <Star size={14} fill={favorites.includes(s.symbol) ? 'currentColor' : 'none'} />
                   </button>
                 </div>
                 <h3 className="market-name">{s.displayName || s.symbol}</h3>
+                <p className="market-symbol-code mono text-muted">{s.symbol}</p>
                 <div className="market-price-row">
-                  <span className="market-price mono">{price?.quote?.toFixed(s.pip ? String(1/s.pip).length - 1 : 2) || '—'}</span>
+                  <span className="market-price mono">{formatted ?? '—'}</span>
                   {price?.dir === 'up' && <TrendingUp size={14} className="profit" />}
                   {price?.dir === 'down' && <TrendingDown size={14} className="loss" />}
                 </div>
@@ -107,11 +118,16 @@ export default function Markets() {
           <h3 className="heading-md">Watchlist</h3>
           <div className="favorites-row">
             {favorites.map((sym) => {
+              const meta = symbols.find((s) => s.symbol === sym);
               const p = prices[sym];
               return (
                 <Link key={sym} to="/trade" className="watchlist-chip" onClick={() => selectSymbol(sym)}>
-                  <span className="watchlist-sym">{sym}</span>
-                  {p?.quote && <span className={`mono ${p.dir === 'up' ? 'profit' : p.dir === 'down' ? 'loss' : ''}`}>{p.quote.toFixed(2)}</span>}
+                  <span className="watchlist-sym">{meta?.displayName || sym}</span>
+                  {p?.quote != null && (
+                    <span className={`mono ${p.dir === 'up' ? 'profit' : p.dir === 'down' ? 'loss' : ''}`}>
+                      {Number(p.quote).toFixed(priceDecimals(sym, meta?.pip))}
+                    </span>
+                  )}
                 </Link>
               );
             })}
