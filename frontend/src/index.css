@@ -28,6 +28,14 @@
   
   --shadow-glow: 0 0 40px var(--purple-glow);
   --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.4);
+
+  --workspace-rail: rgba(12, 10, 22, 0.72);
+  --workspace-surface: rgba(0, 0, 0, 0.12);
+  --workspace-panel: rgba(12, 10, 22, 0.55);
+  --workspace-footer: rgba(12, 10, 22, 0.95);
+  --workspace-ticker: rgba(12, 10, 22, 0.92);
+  --workspace-rail-text: var(--text-secondary);
+  --workspace-rail-text-active: var(--text-primary);
   
   --radius-sm: 8px;
   --radius-md: 16px;
@@ -1517,12 +1525,20 @@ button {
 [data-theme='light'] {
   --bg-color: #f4f2f8;
   --bg-secondary: #ebe8f2;
-  --bg-card: rgba(255, 255, 255, 0.85);
+  --bg-card: rgba(255, 255, 255, 0.92);
   --text-primary: #121018;
   --text-secondary: #4a4458;
   --text-muted: #7a7388;
   --border-subtle: rgba(0, 0, 0, 0.08);
   --shadow-card: 0 8px 32px rgba(107, 51, 238, 0.08);
+
+  --workspace-rail: rgba(255, 255, 255, 0.96);
+  --workspace-surface: #f0edf5;
+  --workspace-panel: rgba(255, 255, 255, 0.98);
+  --workspace-footer: rgba(255, 255, 255, 0.98);
+  --workspace-ticker: rgba(255, 255, 255, 0.98);
+  --workspace-rail-text: #4a4458;
+  --workspace-rail-text-active: #121018;
 }
 
 [data-theme='light'] .navbar {
@@ -2750,7 +2766,7 @@ button {
   justify-content: space-between;
   gap: 12px;
   padding: 8px 16px;
-  background: rgba(12, 10, 22, 0.95);
+  background: var(--workspace-footer);
   border-top: 1px solid var(--border-subtle);
   backdrop-filter: blur(12px);
 }
@@ -3085,7 +3101,7 @@ button {
   }
   .mobile-bottom-nav {
     display: flex; position: fixed; bottom: 48px; left: 0; right: 0;
-    background: rgba(12, 10, 22, 0.98); border-top: 1px solid var(--border-subtle); z-index: 39;
+    background: var(--workspace-footer); border-top: 1px solid var(--border-subtle); z-index: 39;
   }
   .mobile-nav-link {
     flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -3339,17 +3355,30 @@ button {
   height: 100%;
   border: none;
   border-radius: 0;
-  background: rgba(12, 10, 22, 0.72);
+  background: var(--workspace-rail);
   backdrop-filter: blur(16px);
   padding: 8px 6px;
   overflow-y: auto;
+}
+
+.workspace-shell .sidebar-link {
+  color: var(--workspace-rail-text);
+}
+
+.workspace-shell .sidebar-link:hover,
+.workspace-shell .sidebar-link.active {
+  color: var(--workspace-rail-text-active);
+}
+
+.workspace-shell .sidebar-group-toggle {
+  color: var(--workspace-rail-text);
 }
 
 .workspace-shell .app-content-wrap {
   flex: 1;
   min-width: 0;
   min-height: 0;
-  background: rgba(0, 0, 0, 0.12);
+  background: var(--workspace-surface);
 }
 
 .workspace-page {
@@ -3403,7 +3432,7 @@ button {
   margin: 0;
   border-left: 1px solid var(--border-subtle);
   border-radius: 0;
-  background: rgba(12, 10, 22, 0.72);
+  background: var(--workspace-rail);
 }
 
 .workspace-shell .trade-summary-panel.collapsed {
@@ -3414,7 +3443,7 @@ button {
   position: sticky;
   top: 56px;
   z-index: 30;
-  background: rgba(12, 10, 22, 0.92);
+  background: var(--workspace-ticker);
 }
 
 .workspace-shell .app-ticker.collapsed {
@@ -3449,7 +3478,53 @@ button {
 .trade-page .trade-panel-compact {
   border: none;
   border-radius: 0;
-  background: rgba(12, 10, 22, 0.55);
+  background: var(--workspace-panel);
+}
+
+[data-theme='light'] .trading-footer {
+  background: var(--workspace-footer);
+  color: var(--text-primary);
+}
+
+[data-theme='light'] .mobile-bottom-nav {
+  background: var(--workspace-footer);
+}
+
+[data-theme='light'] .trade-page .trade-chart-section,
+[data-theme='light'] .trade-page .trader-chart-section {
+  background: var(--bg-card);
+  border-color: var(--border-subtle);
+}
+
+[data-theme='light'] .chart-type-toggle {
+  background: rgba(107, 51, 238, 0.08);
+}
+
+[data-theme='light'] .connection-badge.compact,
+[data-theme='light'] .trader-asset-picker {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--border-subtle);
+}
+
+.market-symbol-code {
+  font-size: 0.72rem;
+  margin: 0 0 6px;
+}
+
+.markets-empty {
+  padding: 24px 0;
+  text-align: center;
+}
+
+.account-currency-flag {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.account-row-balance {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .page-header-block {
