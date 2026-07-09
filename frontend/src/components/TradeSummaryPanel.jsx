@@ -6,7 +6,7 @@ import { usePanelState } from '../hooks/usePanelState';
 
 export default function TradeSummaryPanel() {
   const [tab, setTab] = useState('summary');
-  const { open: expanded, toggle: togglePanel } = usePanelState('summary-panel', true);
+  const { open: expanded, toggle: togglePanel } = usePanelState('summary-panel', false);
   const { sessionPl, wins, losses, winRate, journal, transactions, reset } = useTradeSession();
   const { balance, openContracts } = useTradingWs();
 
