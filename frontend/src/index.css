@@ -3046,8 +3046,14 @@ button {
     margin: 0;
   }
   .mobile-bottom-nav {
-    display: flex; position: fixed; bottom: 48px; left: 0; right: 0;
-    background: var(--workspace-footer); border-top: 1px solid var(--border-subtle); z-index: 39;
+    display: flex;
+    position: fixed;
+    bottom: calc(52px + env(safe-area-inset-bottom, 0px));
+    left: 0;
+    right: 0;
+    background: var(--workspace-footer);
+    border-top: 1px solid var(--border-subtle);
+    z-index: 45;
   }
   .mobile-nav-link {
     flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -3496,12 +3502,6 @@ button {
     overflow-x: hidden;
   }
 
-  .app-main,
-  .workspace-page,
-  .app-main--trade {
-    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
-  }
-
   .workspace-shell {
     padding-top: 52px;
   }
@@ -3568,31 +3568,40 @@ button {
   }
 
   .trading-footer {
-    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
-    padding-left: 8px;
-    padding-right: 8px;
-    gap: 6px;
-    flex-wrap: wrap;
+    min-height: 44px;
+    padding: 6px 10px calc(6px + env(safe-area-inset-bottom, 0px));
+    gap: 8px;
+    flex-wrap: nowrap;
+    justify-content: center;
+    z-index: 40;
   }
 
   .trading-footer-center {
-    flex: 1 1 100%;
-    order: 3;
+    flex: 1;
+    order: 0;
     justify-content: center;
+    min-width: 0;
   }
 
+  /* Keep Risk Disclaimer out of the bottom-nav row on phones */
   .risk-disclaimer-btn {
-    font-size: 0.68rem;
-    padding: 4px 8px;
+    display: none;
   }
 
   .footer-run-btn {
-    min-width: 80px;
+    min-width: 72px;
     font-size: 0.72rem;
   }
 
   .mobile-bottom-nav {
-    bottom: calc(48px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(52px + env(safe-area-inset-bottom, 0px));
+    z-index: 45;
+  }
+
+  .app-main,
+  .workspace-page,
+  .app-main--trade {
+    padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
   }
 
   .app-shell-body {
@@ -3606,7 +3615,7 @@ button {
   }
 
   .workspace-page {
-    padding: 16px 12px calc(96px + env(safe-area-inset-bottom, 0px));
+    padding: 16px 12px calc(112px + env(safe-area-inset-bottom, 0px));
     max-width: 100%;
   }
 
