@@ -37,9 +37,17 @@ export default function Speedbot() {
       const id = proposal.proposal?.id;
       const price = proposal.proposal?.ask_price;
       if (!id || price == null) return;
-      await buyContract(String(id), price);
+      const buy = await buyContract(String(id), price);
       lastTradeRef.current = contractType;
-      recordTrade({ message: 'Contract bought', type: 'speedbot', contractType });
+      recordTrade({
+        message: 'Contract bought',
+        type: 'speedbot',
+        contractType,
+        symbol: selectedSymbol,
+        contractId: buy.buy?.contract_id,
+        buyPrice: buy.buy?.buy_price ?? price,
+        status: 'open',
+      });
     } catch {
       /* skip tick */
     }
