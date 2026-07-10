@@ -3957,3 +3957,337 @@ button {
   }
 }
 
+/* === Automation Hub + Analysis Lab === */
+.workspace-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.workspace-header-cta {
+  flex-shrink: 0;
+}
+
+.automation-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.automation-hub-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s;
+}
+
+.automation-hub-card:hover {
+  border-color: rgba(157, 108, 255, 0.45);
+}
+
+.automation-hub-icon {
+  color: #9d6cff;
+}
+
+.automation-apex-section {
+  margin: 8px 0 16px;
+}
+
+.automation-native-section {
+  margin-bottom: 20px;
+}
+
+.automation-native-list {
+  margin: 8px 0 0;
+  padding-left: 1.2rem;
+  color: var(--text-muted);
+}
+
+.analysis-lab-tabs {
+  margin-bottom: 16px;
+}
+
+.analysis-lab-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.analysis-boards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.analysis-market-card {
+  padding: 16px;
+}
+
+.analysis-market-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.analysis-market-price {
+  text-align: right;
+}
+
+.analysis-market-price strong {
+  display: block;
+  font-size: 1.25rem;
+  color: #9d6cff;
+}
+
+.analysis-digit-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 10px 0;
+}
+
+.analysis-digit-pill {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: rgba(157, 108, 255, 0.15);
+  color: var(--text-primary);
+}
+
+.analysis-stat-row {
+  margin: 8px 0;
+}
+
+.analysis-stat-label {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.analysis-stat-bars {
+  display: flex;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  font-size: 0.68rem;
+}
+
+.analysis-stat-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  padding: 0 4px;
+}
+
+.analysis-stat-bar.even { background: rgba(34, 197, 94, 0.35); color: #22c55e; }
+.analysis-stat-bar.odd { background: rgba(239, 68, 68, 0.35); color: #ef4444; }
+.analysis-stat-bar.rise { background: rgba(34, 197, 94, 0.35); color: #22c55e; }
+.analysis-stat-bar.fall { background: rgba(239, 68, 68, 0.35); color: #ef4444; }
+.analysis-stat-bar.over { background: rgba(157, 108, 255, 0.35); color: #9d6cff; }
+.analysis-stat-bar.under { background: rgba(100, 116, 139, 0.35); color: var(--text-muted); }
+
+.analysis-market-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.binary-analysis-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.binary-analysis-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.binary-live-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.binary-live-stats div {
+  padding: 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
+.binary-live-stats strong {
+  display: block;
+  font-size: 1.1rem;
+  color: #9d6cff;
+}
+
+.prob-guide-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 12px 0;
+}
+
+.prob-guide-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.prob-guide-cell {
+  padding: 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  text-align: center;
+  font-size: 0.75rem;
+}
+
+.prob-guide-cell strong {
+  display: block;
+  color: #9d6cff;
+}
+
+.signal-strength-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  margin: 8px 0;
+}
+
+.signal-strength-table th,
+.signal-strength-table td {
+  padding: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: left;
+}
+
+.binary-trade-handoff {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.strategy-pack-section {
+  margin-bottom: 28px;
+}
+
+.digit-circle {
+  position: relative;
+  text-align: center;
+}
+
+.digit-circle-svg {
+  width: 100%;
+  max-width: 48px;
+  transform: rotate(-90deg);
+}
+
+.digit-circle-bg {
+  fill: none;
+  stroke: var(--border-subtle);
+  stroke-width: 3;
+}
+
+.digit-circle-fg {
+  fill: none;
+  stroke: #9d6cff;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.digit-circle[data-pct='0'],
+.digit-circle[data-pct='1'],
+.digit-circle[data-pct='2'],
+.digit-circle[data-pct='3'],
+.digit-circle[data-pct='4'] .digit-circle-fg { stroke: #64748b; }
+.digit-circle[data-pct='5'],
+.digit-circle[data-pct='6'],
+.digit-circle[data-pct='7'] .digit-circle-fg { stroke: #9d6cff; }
+.digit-circle[data-pct='8'],
+.digit-circle[data-pct='9'],
+.digit-circle[data-pct='10'] .digit-circle-fg { stroke: #7c3aed; }
+
+.digit-circle-label {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.digit-circle-pct {
+  display: block;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+.builder-canvas-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.builder-tool-btn {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: inline-flex;
+}
+
+.builder-tool-btn:hover {
+  color: var(--text-primary);
+  border-color: rgba(157, 108, 255, 0.4);
+}
+
+.builder-tool-sep {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+@media (max-width: 768px) {
+  .binary-analysis-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .prob-guide-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .digit-circles-row {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
