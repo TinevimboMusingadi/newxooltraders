@@ -48,14 +48,26 @@ export default function Automated() {
     evenRunner.current = createAutomatedRunner({
       getProposal,
       buyContract,
-      onTrade: () => recordTrade({ message: 'Contract bought', type: 'automated-even' }),
+      onTrade: (details) => recordTrade({
+        message: 'Contract bought',
+        type: 'automated-even',
+        symbol: selectedSymbol,
+        ...details,
+        status: 'open',
+      }),
     });
     ouRunner.current = createAutomatedRunner({
       getProposal,
       buyContract,
-      onTrade: () => recordTrade({ message: 'Contract bought', type: 'automated-ou' }),
+      onTrade: (details) => recordTrade({
+        message: 'Contract bought',
+        type: 'automated-ou',
+        symbol: selectedSymbol,
+        ...details,
+        status: 'open',
+      }),
     });
-  }, [getProposal, buyContract, recordTrade]);
+  }, [getProposal, buyContract, recordTrade, selectedSymbol]);
 
   useEffect(() => {
     if (!runningEven || !connected) return;
