@@ -1,27 +1,48 @@
 import DigitHeatmap from '../components/DigitHeatmap';
 import ScanConfigPanel from '../components/ScanConfigPanel';
 import SignalsFeed from '../components/SignalsFeed';
-import { DcirclesView } from '../components/EvenOddStrip';
+import AnalysisMarketCard from '../components/AnalysisMarketCard';
+import BinaryAnalysisPanel from '../components/BinaryAnalysisPanel';
+import WorkspacePageHeader from '../components/WorkspacePageHeader';
 import { useMemo, useState, useEffect } from 'react';
 import { scanMarkets, rankSignals } from '../lib/digitsEngine';
 import { filterVolatilitySymbols } from '../lib/symbolGroups';
 import { useActiveSymbols } from '../hooks/useActiveSymbols';
 import { useMarket } from '../context/MarketContext';
 import { useDigitStream } from '../hooks/useDigitStream';
+import { useMultiDigitStream } from '../hooks/useMultiDigitStream';
 import { useTradingFooter } from '../context/TradingFooterContext';
+
+const DEFAULT_BOARD_SYMBOLS = ['1HZ100V', '1HZ10V', '1HZ25V'];
 
 export default function Scanner() {
   const { favorites, selectedSymbol } = useMarket();
   const { symbols, loading: symbolsLoading } = useActiveSymbols();
-  const [tool, setTool] = useState('normal');
+  const [tab, setTab] = useState('boards');
   const [depth, setDepth] = useState(1000);
   const [pattern, setPattern] = useState('O1U8');
   const [minConfidence, setMinConfidence] = useState(55);
   const [scanning, setScanning] = useState(false);
   const [results, setResults] = useState([]);
   const [selectedDist, setSelectedDist] = useState(null);
-  const { evenOddHistory, evenPct } = useDigitStream(selectedSymbol);
+  const [bufferSize, setBufferSize] = useState(120);
+  const [tradeType, setTradeType] = useState('even_odd');
+  const binaryStream = useDigitStream(selectedSymbol, { bufferSize });
   const { setRunHandler, clearRunHandler } = useTradingFooter();
+
+  const boardSymbols = useMemo(() => {
+    const vol = filterVolatilitySymbols(symbols).map((s) => s.symbol);
+    const merged = [...new Set([...DEFAULT_BOARD_SYMBOLS, ...favorites, ...vol])].slice(0, 6);
+    return merged.length ? merged : DEFAULT_BOARD_SYMBOLS;
+  }, [symbols, favorites]);
+
+  const symbolNames = useMemo(() => {
+    const map = {};
+    symbols.forEach((s) => { map[s.symbol] = s.displayName; });
+    return map;
+  }, [symbols]);
+
+  const { streams } = useMultiDigitStream(boardSymbols, { bufferSize });
 
   const markets = useMemo(() => {
     const vol = filterVolatilitySymbols(symbols).map((s) => s.symbol);
@@ -42,32 +63,65 @@ export default function Scanner() {
   };
 
   useEffect(() => {
-    setRunHandler(runScan, 'Run Scan');
+    if (tab === 'scan') {
+      setRunHandler(runScan, 'Run Scan');
+      return () => clearRunHandler();
+    }
+    clearRunHandler();
     return () => clearRunHandler();
-  }, [markets, depth, pattern]);
+  }, [tab, markets, depth, pattern]);
 
   const signals = rankSignals(results, minConfidence);
 
   return (
-    <div className="scanner-page">
-      <div className="page-header-block">
-        <h1 className="heading-lg">Analysis Tools</h1>
-        <p className="text-secondary">Digit circles and pattern scanner on live volatility markets.</p>
+    <div className="scanner-page analysis-lab-page">
+      <WorkspacePageHeader
+        title="Analysis Lab"
+        subtitle="Live digit boards, binary probability analysis, and pattern scanning on volatility markets."
+        action={tab === 'scan' ? undefined : null}
+      />
+
+      <div className="scanner-tool-toggle analysis-lab-tabs">
+        <button type="button" className={`pill-toggle ${tab === 'boards' ? 'active' : ''}`} onClick={() => setTab('boards')}>Live boards</button>
+        <button type="button" className={`pill-toggle ${tab === 'binary' ? 'active' : ''}`} onClick={() => setTab('binary')}>Binary panel</button>
+        <button type="button" className={`pill-toggle ${tab === 'scan' ? 'active' : ''}`} onClick={() => setTab('scan')}>Pattern scan</button>
       </div>
 
-      <div className="scanner-tool-toggle">
-        <button type="button" className={`pill-toggle ${tool === 'dcircles' ? 'active' : ''}`} onClick={() => setTool('dcircles')}>Dcircles</button>
-        <button type="button" className={`pill-toggle ${tool === 'normal' ? 'active' : ''}`} onClick={() => setTool('normal')}>Normal tool</button>
-      </div>
-
-      {tool === 'dcircles' && (
-        <div className="card scanner-dcircles">
-          <p className="text-muted">Live even/odd on {selectedSymbol}</p>
-          <DcirclesView history={evenOddHistory} evenPct={evenPct} />
-        </div>
+      {tab === 'boards' && (
+        <>
+          <div className="analysis-lab-controls card">
+            <label>
+              Tick buffer
+              <input type="number" min={20} max={500} value={bufferSize} onChange={(e) => setBufferSize(Number(e.target.value))} />
+            </label>
+            <span className="text-muted">Watching {boardSymbols.length} markets live</span>
+          </div>
+          <div className="analysis-boards-grid">
+            {boardSymbols.map((sym) => (
+              <AnalysisMarketCard
+                key={sym}
+                symbol={sym}
+                displayName={symbolNames[sym]}
+                stream={streams[sym]}
+                bufferSize={bufferSize}
+              />
+            ))}
+          </div>
+        </>
       )}
 
-      {tool === 'normal' && (
+      {tab === 'binary' && (
+        <BinaryAnalysisPanel
+          symbol={selectedSymbol}
+          stream={binaryStream}
+          tradeType={tradeType}
+          onTradeTypeChange={setTradeType}
+          bufferSize={bufferSize}
+          onBufferSizeChange={setBufferSize}
+        />
+      )}
+
+      {tab === 'scan' && (
         <>
           {symbolsLoading && <p className="text-muted">Loading live markets…</p>}
           <ScanConfigPanel

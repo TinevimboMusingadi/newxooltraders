@@ -6,7 +6,7 @@ import { CardSkeleton } from '../components/ui/Skeleton';
 
 const ACTION_CARDS = [
   { to: '/builder', icon: FolderOpen, title: 'Load Bot', desc: 'Open your saved trading strategy.' },
-  { to: '/bots/free', icon: Bot, title: 'Premium Bots', desc: 'Exclusive automated strategies.' },
+  { to: '/bots/free', icon: Bot, title: 'Free Strategies', desc: 'Preset signal-driven strategies.' },
   { to: '/speedbot', icon: Rocket, title: 'Speed Bot', desc: 'One-click automated trading.' },
   { to: '/trade', icon: Hand, title: 'Manual Trading', desc: 'Full control — trade your way.' },
 ];
