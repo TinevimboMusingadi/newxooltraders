@@ -81,7 +81,17 @@ export default function BulkTrader() {
       const trades = buildTrades().map((t) => ({ ...t, contractType: ct }));
       const results = await queueBulkTrades(trades, { delayMs: 800, maxConcurrent: 2 });
       setLog(results.map((r, i) => `#${i + 1} contract ${r.buy?.contract_id || 'ok'}`));
-      recordTrade({ message: 'Contract bought', type: 'bulk', symbol, contractType: ct });
+      results.forEach((r) => {
+        recordTrade({
+          message: 'Contract bought',
+          type: 'bulk',
+          symbol,
+          contractType: ct,
+          contractId: r.buy?.contract_id,
+          buyPrice: r.buy?.buy_price ?? stake,
+          status: 'open',
+        });
+      });
     } catch (err) {
       setLog([`Error: ${err.message}`]);
     } finally {
