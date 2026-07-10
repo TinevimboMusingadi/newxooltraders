@@ -26,6 +26,23 @@ export async function ensureTables() {
       deriv_run_id varchar, strategy_id varchar NOT NULL, status varchar DEFAULT 'running',
       stats json, created_at timestamp DEFAULT now(), stopped_at timestamp
     );
+    CREATE TABLE IF NOT EXISTS trade_history (
+      id varchar PRIMARY KEY,
+      user_key varchar NOT NULL,
+      account_id varchar,
+      contract_id varchar,
+      symbol varchar,
+      contract_type varchar,
+      buy_price numeric,
+      sell_price numeric,
+      profit numeric,
+      source varchar DEFAULT 'app',
+      status varchar DEFAULT 'open',
+      meta json,
+      created_at timestamp DEFAULT now(),
+      closed_at timestamp
+    );
+    CREATE INDEX IF NOT EXISTS trade_history_user_idx ON trade_history (user_key, created_at DESC);
   `;
   await query(sql);
 }
@@ -97,5 +114,65 @@ export const copyDb = {
   },
   async recentJobs(limit = 20) {
     return getMany('SELECT * FROM copy_jobs ORDER BY created_at DESC LIMIT $1', [limit]);
+  },
+};
+
+export const tradeHistoryDb = {
+  async list(userKey, accountId, limit = 100) {
+    if (accountId) {
+      return getMany(
+        `SELECT * FROM trade_history
+         WHERE user_key = $1 AND (account_id = $2 OR account_id IS NULL)
+         ORDER BY created_at DESC LIMIT $3`,
+        [userKey, accountId, limit],
+      );
+    }
+    return getMany(
+      'SELECT * FROM trade_history WHERE user_key = $1 ORDER BY created_at DESC LIMIT $2',
+      [userKey, limit],
+    );
+  },
+  async insert(entry) {
+    await query(
+      `INSERT INTO trade_history
+        (id, user_key, account_id, contract_id, symbol, contract_type, buy_price, sell_price, profit, source, status, meta, created_at, closed_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,now(),$13)`,
+      [
+        entry.id,
+        entry.userKey,
+        entry.accountId,
+        entry.contractId,
+        entry.symbol,
+        entry.contractType,
+        entry.buyPrice,
+        entry.sellPrice,
+        entry.profit,
+        entry.source,
+        entry.status,
+        entry.meta ? JSON.stringify(entry.meta) : null,
+        entry.closedAt || null,
+      ],
+    );
+  },
+  async close(id, userKey, { sellPrice, profit, status, meta }) {
+    const row = await getOne(
+      `UPDATE trade_history
+       SET sell_price = COALESCE($1, sell_price),
+           profit = COALESCE($2, profit),
+           status = $3,
+           meta = COALESCE($4, meta),
+           closed_at = now()
+       WHERE id = $5 AND user_key = $6
+       RETURNING *`,
+      [
+        sellPrice != null ? Number(sellPrice) : null,
+        profit != null ? Number(profit) : null,
+        status || 'closed',
+        meta ? JSON.stringify(meta) : null,
+        id,
+        userKey,
+      ],
+    );
+    return row;
   },
 };
