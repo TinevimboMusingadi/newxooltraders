@@ -1,18 +1,43 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Play, Square, Save, Trash2, RefreshCw } from 'lucide-react';
-import { api } from '../lib/api';
+import {
+  Play,
+  Square,
+  Save,
+  Trash2,
+  RefreshCw,
+  Radar,
+  Sparkles,
+  LayoutGrid,
+  Workflow,
+  Hammer,
+  Copy,
+  Sun,
+} from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useMarket } from '../context/MarketContext';
 import { useTradingWs } from '../context/TradingWsContext';
 import { useTradeSession } from '../context/TradeSessionContext';
 import { useTradingFooter } from '../context/TradingFooterContext';
-import { createStrategyRunner, BOT_PRESETS } from '../lib/strategyRunner';
+import { createStrategyRunner, BOT_PRESETS, computeSwingLevels } from '../lib/strategyRunner';
 import { DEFAULT_DURATION } from '../lib/tradeDurations';
 import { useBotConfigs, useSaveBotConfig, useDeleteBotConfig } from '../hooks/queries';
 import { useActiveSymbols, useRealtimePrices } from '../hooks/useActiveSymbols';
+import { useDigitStream } from '../hooks/useDigitStream';
 import { filterVolatilitySymbols } from '../lib/symbolGroups';
+import { api } from '../lib/api';
+import WorkspacePageHeader from '../components/WorkspacePageHeader';
+
+const HUB_LINKS = [
+  { to: '/scanner', label: 'Analysis Lab', icon: Radar, desc: 'Live digit boards & probability' },
+  { to: '/bots/free', label: 'Free Strategies', icon: LayoutGrid, desc: 'Signal-driven presets' },
+  { to: '/bots/ai', label: 'Signal Lab', icon: Sparkles, desc: 'Ranked live signals' },
+  { to: '/speedbot', label: 'Speedbot', icon: Sun, desc: 'Fast even/odd parity' },
+  { to: '/automated', label: 'Rules', icon: Workflow, desc: 'Threshold automation' },
+  { to: '/builder', label: 'Builder', icon: Hammer, desc: 'Blockly strategies' },
+  { to: '/copy', label: 'Copy', icon: Copy, desc: 'Copy trading' },
+];
 
 export default function Bots() {
   const { user } = useAuth();
@@ -23,13 +48,15 @@ export default function Bots() {
   const { sessionPl, wins, losses, winRate, recordTrade } = useTradeSession();
   const { setRunHandler, clearRunHandler } = useTradingFooter();
   const { symbols } = useActiveSymbols();
+  const digitStream = useDigitStream(selectedSymbol);
 
-  const [config, setConfig] = useState(BOT_PRESETS[1].config);
+  const [config, setConfig] = useState({ ...BOT_PRESETS[1].config, intervalMode: false });
   const [name, setName] = useState('Apex Bot');
   const [logs, setLogs] = useState([]);
   const [stats, setStats] = useState({ wins: 0, losses: 0, pl: 0, trades: 0 });
   const [running, setRunning] = useState(false);
   const [lastTick, setLastTick] = useState(null);
+  const [nativeStrategies, setNativeStrategies] = useState(null);
   const runnerRef = useRef(null);
 
   const savedConfigs = useBotConfigs();
@@ -41,6 +68,15 @@ export default function Bots() {
     [symbols],
   );
   const { prices } = useRealtimePrices(marketSymbols);
+
+  useEffect(() => {
+    api.getAutomationStrategies()
+      .then((d) => {
+        const list = d?.strategies || d?.auto_list_strategies?.strategies || [];
+        setNativeStrategies(Array.isArray(list) ? list : []);
+      })
+      .catch(() => setNativeStrategies([]));
+  }, []);
 
   useEffect(() => {
     const latest = Object.values(prices).find((p) => p?.epoch);
@@ -65,36 +101,50 @@ export default function Bots() {
     });
   }, [getProposal, buyContract, selectedSymbol, selectedAccount, config]);
 
+  const buildSignal = useCallback(() => {
+    const levels = computeSwingLevels(digitStream.quoteHistory || [], config.srLookback || 50);
+    return {
+      snapshot: {
+        ...digitStream,
+        swingHigh: levels.swingHigh,
+        swingLow: levels.swingLow,
+        quote: digitStream.quote,
+      },
+      contractType: config.contractType,
+    };
+  }, [digitStream, config]);
+
   useEffect(() => {
     if (!running || !connected) return;
     const interval = setInterval(async () => {
-      await runnerRef.current?.tick({});
+      const signal = config.intervalMode ? { force: true } : buildSignal();
+      await runnerRef.current?.tick(signal);
       setStats(runnerRef.current?.getStats() || stats);
       if (!runnerRef.current?.isRunning()) {
         setRunning(false);
         toast.info('Bot stopped');
       }
-    }, 5000);
+    }, config.intervalMode ? 5000 : 2000);
     return () => clearInterval(interval);
-  }, [running, connected, stats]);
+  }, [running, connected, config, buildSignal, stats]);
 
-  const start = () => {
+  const start = useCallback(() => {
     runnerRef.current?.start(config);
     setRunning(true);
     recordTrade({ message: 'Bot started', type: 'bot' });
     toast.success('Bot started', { description: `${name} on ${selectedSymbol}` });
-  };
+  }, [config, name, selectedSymbol, recordTrade]);
 
-  const stop = () => {
+  const stop = useCallback(() => {
     runnerRef.current?.stop();
     setRunning(false);
     toast.info('Bot stopped manually');
-  };
+  }, []);
 
   useEffect(() => {
     setRunHandler(running ? stop : start, running ? 'Stop Bot' : 'Start Bot');
     return () => clearRunHandler();
-  }, [running, config, name]);
+  }, [running, start, stop, setRunHandler, clearRunHandler]);
 
   const saveConfig = () => {
     saveMutation.mutate(
@@ -117,10 +167,41 @@ export default function Bots() {
   };
 
   return (
-    <div className="bots-page">
-      <div className="page-header-block">
-        <h1 className="heading-lg">Apex Bot</h1>
-        <p className="text-secondary">Automated trading with live market subscriptions.</p>
+    <div className="bots-page automation-hub-page">
+      <WorkspacePageHeader
+        title="Automation Hub"
+        subtitle="Signal-driven bots on live Deriv data — start Apex below or jump to a tool."
+      />
+
+      <div className="automation-hub-grid">
+        {HUB_LINKS.map(({ to, label, icon: Icon, desc }) => (
+          <Link key={to} to={to} className="card automation-hub-card">
+            <Icon size={22} className="automation-hub-icon" />
+            <h3>{label}</h3>
+            <p className="text-muted">{desc}</p>
+          </Link>
+        ))}
+      </div>
+
+      {nativeStrategies && nativeStrategies.length > 0 && (
+        <div className="card automation-native-section">
+          <h3 className="heading-md">Deriv native strategies</h3>
+          <p className="text-muted">Available on your account via Deriv automation API.</p>
+          <ul className="automation-native-list">
+            {nativeStrategies.slice(0, 6).map((s) => (
+              <li key={s.id || s.strategy_id}>{s.name || s.title || s.id}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {nativeStrategies && nativeStrategies.length === 0 && (
+        <p className="text-muted automation-native-empty">Deriv native automation not available on this account.</p>
+      )}
+
+      <div className="automation-apex-section">
+        <h2 className="heading-md">Apex Bot</h2>
+        <p className="text-secondary">Runs on {selectedSymbol} — signal mode waits for live stats; interval mode trades on a timer (labeled honestly).</p>
       </div>
 
       <div className="apex-stats-row">
@@ -134,9 +215,7 @@ export default function Bots() {
         {running ? <><Square size={16} /> STOP BOT</> : <><Play size={16} /> START BOT</>}
       </button>
 
-      {error && (
-        <div className="auth-error-banner bot-error-banner">Last Error: {error}</div>
-      )}
+      {error && <div className="auth-error-banner bot-error-banner">Last Error: {error}</div>}
 
       <div className="bots-grid">
         <div className="card bot-config">
@@ -158,6 +237,14 @@ export default function Bots() {
               <input type="checkbox" checked={config.useMartingale} onChange={(e) => setConfig({ ...config, useMartingale: e.target.checked })} />
               Martingale (x{config.multiplier || 2})
             </label>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={!!config.intervalMode}
+                onChange={(e) => setConfig({ ...config, intervalMode: e.target.checked })}
+              />
+              Interval mode (timed trades — no signal required)
+            </label>
           </div>
 
           <div className="bot-actions">
@@ -173,11 +260,6 @@ export default function Bots() {
                 <button key={p.id} type="button" className="preset-btn" onClick={() => loadPresets(p)}>{p.name}</button>
               ))}
             </div>
-          </div>
-
-          <div className="bot-presets">
-            <Link to="/bots/free" className="btn btn-ghost btn-sm">Free Bots gallery</Link>
-            <Link to="/bots/ai" className="btn btn-ghost btn-sm">AI signal presets</Link>
           </div>
 
           {savedConfigs.data?.configs?.length > 0 && (
@@ -207,6 +289,10 @@ export default function Bots() {
             <div className="bot-stat-item">
               <span className="summary-label">Trades</span>
               <span className="summary-value">{stats.trades}</span>
+            </div>
+            <div className="bot-stat-item">
+              <span className="summary-label">Live even%</span>
+              <span className="summary-value">{digitStream.evenPct.toFixed(1)}%</span>
             </div>
           </div>
         </div>

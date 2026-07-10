@@ -20,8 +20,8 @@ const MOBILE_NAV = [
   { to: '/dashboard', label: 'Home', icon: LayoutDashboard },
   { to: '/trade', label: 'Trade', icon: LineChart },
   { to: '/bulk', label: 'Bulk', icon: Zap },
-  { to: '/scanner', label: 'Scan', icon: Radar },
-  { to: '/bots', label: 'Bots', icon: Bot },
+  { to: '/scanner', label: 'Analysis', icon: Radar },
+  { to: '/bots', label: 'Hub', icon: Bot },
 ];
 
 const SUMMARY_ROUTES = ['/bulk', '/scanner', '/bots', '/speedbot', '/automated', '/builder', '/dashboard'];
