@@ -1,40 +1,24 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { computeDigitDistribution, extractLastDigit } from '../lib/digitsEngine';
+import { createTickBuffer } from '../lib/tickAnalysisEngine';
 import { isValidSymbol } from '../lib/symbolUtils';
 
 const PUBLIC_WS = 'wss://api.derivws.com/trading/v1/options/ws/public';
 
-export function useDigitStream(symbol, { historySize = 20, pip = 2 } = {}) {
-  const [quote, setQuote] = useState(null);
-  const [lastDigit, setLastDigit] = useState(null);
-  const [evenOddHistory, setEvenOddHistory] = useState([]);
-  const [distribution, setDistribution] = useState(null);
-  const quotesRef = useRef([]);
+export function useDigitStream(symbol, { bufferSize = 120, pip = 2 } = {}) {
+  const [snapshot, setSnapshot] = useState(null);
+  const bufferRef = useRef(null);
 
   const pushQuote = useCallback((q) => {
-    setQuote(q);
-    const digit = extractLastDigit(q, pip);
-    setLastDigit(digit);
-    const even = digit % 2 === 0;
-    setEvenOddHistory((prev) => [...prev.slice(-(historySize - 1)), even ? 'E' : 'O']);
-    quotesRef.current = [...quotesRef.current.slice(-999), q];
-    if (quotesRef.current.length >= 10) {
-      setDistribution(computeDigitDistribution(quotesRef.current, pip));
-    }
-  }, [historySize, pip]);
+    if (!bufferRef.current) bufferRef.current = createTickBuffer(bufferSize);
+    setSnapshot(bufferRef.current.push(q, pip));
+  }, [bufferSize, pip]);
 
   useEffect(() => {
     if (!isValidSymbol(symbol)) return;
-    quotesRef.current = [];
-    setQuote(null);
-    setLastDigit(null);
-    setEvenOddHistory([]);
-    setDistribution(null);
+    bufferRef.current = createTickBuffer(bufferSize);
+    setSnapshot(null);
 
-    let ws;
-    let closed = false;
-
-    ws = new WebSocket(PUBLIC_WS);
+    const ws = new WebSocket(PUBLIC_WS);
     ws.onopen = () => {
       ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
     };
@@ -46,22 +30,26 @@ export function useDigitStream(symbol, { historySize = 20, pip = 2 } = {}) {
     };
 
     return () => {
-      closed = true;
-      if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ forget_all: 'ticks' }));
-      ws?.close();
+      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ forget_all: 'ticks' }));
+      ws.close();
     };
-  }, [symbol, pushQuote]);
-
-  const evenPct = evenOddHistory.length
-    ? (evenOddHistory.filter((x) => x === 'E').length / evenOddHistory.length) * 100
-    : 0;
+  }, [symbol, pushQuote, bufferSize]);
 
   return {
-    quote,
-    lastDigit,
-    evenOddHistory,
-    distribution,
-    evenPct,
-    oddPct: 100 - evenPct,
+    quote: snapshot?.quote ?? null,
+    quoteHistory: snapshot?.quoteHistory ?? [],
+    lastDigit: snapshot?.lastDigit ?? null,
+    digitHistory: snapshot?.digitHistory ?? [],
+    evenOddHistory: snapshot?.evenOddHistory ?? [],
+    riseFallHistory: snapshot?.riseFallHistory ?? [],
+    overUnderHistory: snapshot?.overUnderHistory ?? [],
+    distribution: snapshot?.distribution ?? null,
+    evenPct: snapshot?.evenPct ?? 0,
+    oddPct: snapshot?.oddPct ?? 0,
+    risePct: snapshot?.risePct ?? 0,
+    fallPct: snapshot?.fallPct ?? 0,
+    over4Pct: snapshot?.over4Pct ?? 0,
+    under5Pct: snapshot?.under5Pct ?? 0,
+    tickCount: snapshot?.tickCount ?? 0,
   };
 }
