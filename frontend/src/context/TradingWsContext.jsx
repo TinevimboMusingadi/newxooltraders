@@ -2,13 +2,15 @@ import { createContext, useContext } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useDerivTradingWs } from '../hooks/useDerivTradingWs';
 import { useCopyJobRunner } from '../hooks/useCopyJobRunner';
+import { useTradeSession } from './TradeSessionContext';
 
 const TradingWsContext = createContext(null);
 
 export function TradingWsProvider({ children }) {
   const { user } = useAuth();
   const accountId = user?.selectedAccountId;
-  const ws = useDerivTradingWs(accountId);
+  const { recordContractUpdate } = useTradeSession();
+  const ws = useDerivTradingWs(accountId, { onContractUpdate: recordContractUpdate });
 
   useCopyJobRunner({
     accountId,
