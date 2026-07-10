@@ -3,10 +3,12 @@ import { api } from '../lib/api';
 
 const PING_INTERVAL_MS = 45_000;
 
-export function useDerivTradingWs(accountId) {
+export function useDerivTradingWs(accountId, { onContractUpdate } = {}) {
   const wsRef = useRef(null);
   const reqIdRef = useRef(1);
   const pendingRef = useRef(new Map());
+  const onContractUpdateRef = useRef(onContractUpdate);
+  onContractUpdateRef.current = onContractUpdate;
   const [connected, setConnected] = useState(false);
   const [balance, setBalance] = useState(null);
   const [openContracts, setOpenContracts] = useState([]);
@@ -84,13 +86,15 @@ export function useDerivTradingWs(accountId) {
             setOpenContracts(data.portfolio?.contracts || []);
           }
           if (data.msg_type === 'proposal_open_contract') {
+            const poc = data.proposal_open_contract;
             setOpenContracts((prev) => {
-              const id = data.proposal_open_contract?.contract_id;
+              const id = poc?.contract_id;
               const filtered = prev.filter((c) => c.contract_id !== id);
-              if (data.proposal_open_contract?.is_sold || data.proposal_open_contract?.is_expired) {
+              if (poc?.is_sold || poc?.is_expired) {
+                onContractUpdateRef.current?.(poc);
                 return filtered;
               }
-              return [...filtered, data.proposal_open_contract];
+              return [...filtered, poc];
             });
           }
         };
