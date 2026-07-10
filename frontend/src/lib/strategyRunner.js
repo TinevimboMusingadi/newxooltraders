@@ -169,8 +169,13 @@ export function createAutomatedRunner({ getProposal, buyContract, onTrade }) {
       const id = proposal.proposal?.id;
       const price = proposal.proposal?.ask_price;
       if (!id || price == null) throw new Error('No proposal');
-      await buyContract(String(id), price);
-      onTrade?.();
+      const buy = await buyContract(String(id), price);
+      onTrade?.({
+        contractId: buy.buy?.contract_id,
+        contractType,
+        buyPrice: price,
+        symbol,
+      });
     },
   };
 }
