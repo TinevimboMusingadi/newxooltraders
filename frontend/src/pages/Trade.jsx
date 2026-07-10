@@ -127,7 +127,15 @@ export default function Trade() {
           contractId,
           at: Date.now(),
         });
-        recordTrade({ message: 'Contract bought', type: 'trade', symbol: tradeParams.symbol, contractType: tradeParams.contractType });
+        recordTrade({
+          message: 'Contract bought',
+          type: 'trade',
+          symbol: tradeParams.symbol,
+          contractType: tradeParams.contractType,
+          contractId,
+          buyPrice: askPrice,
+          status: 'open',
+        });
         toast.success(`Trade opened: ${tradeParams.symbol} ${tradeParams.contractType}`, {
           description: `Stake: ${askPrice} ${balance?.currency || 'USD'}`,
         });
