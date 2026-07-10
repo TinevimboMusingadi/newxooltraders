@@ -49,3 +49,22 @@ CREATE TABLE IF NOT EXISTS bot_runs (
   created_at timestamp DEFAULT now(),
   stopped_at timestamp
 );
+
+CREATE TABLE IF NOT EXISTS trade_history (
+  id varchar PRIMARY KEY,
+  user_key varchar NOT NULL,
+  account_id varchar,
+  contract_id varchar,
+  symbol varchar,
+  contract_type varchar,
+  buy_price numeric,
+  sell_price numeric,
+  profit numeric,
+  source varchar DEFAULT 'app',
+  status varchar DEFAULT 'open',
+  meta json,
+  created_at timestamp DEFAULT now(),
+  closed_at timestamp
+);
+
+CREATE INDEX IF NOT EXISTS trade_history_user_idx ON trade_history (user_key, created_at DESC);
