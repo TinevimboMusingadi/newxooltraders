@@ -6,6 +6,7 @@ import { useTradingFooter } from '../context/TradingFooterContext';
 import { useTradeSession } from '../context/TradeSessionContext';
 import EvenOddStrip from '../components/EvenOddStrip';
 import MarketPicker from '../components/MarketPicker';
+import WorkspacePageHeader from '../components/WorkspacePageHeader';
 import { useAuth } from '../hooks/useAuth';
 
 export default function Speedbot() {
@@ -61,10 +62,10 @@ export default function Speedbot() {
 
   return (
     <div className="speedbot-page">
-      <div className="page-header-block">
-        <h1 className="heading-lg">Speedbot</h1>
-        <p className="text-secondary">Fast even/odd trades following live digit parity.</p>
-      </div>
+      <WorkspacePageHeader
+        title="Speedbot"
+        subtitle="Fast even/odd trades following live digit parity."
+      />
 
       <div className="speedbot-grid card">
         <MarketPicker symbol={selectedSymbol} onSelect={selectSymbol} />
