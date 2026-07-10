@@ -131,7 +131,7 @@ export default function Bots() {
   const start = useCallback(() => {
     runnerRef.current?.start(config);
     setRunning(true);
-    recordTrade({ message: 'Bot started', type: 'bot' });
+    recordTrade({ message: 'Bot started', type: 'bot', persist: false });
     toast.success('Bot started', { description: `${name} on ${selectedSymbol}` });
   }, [config, name, selectedSymbol, recordTrade]);
 
