@@ -78,6 +78,15 @@ export const api = {
     if (limit) params.set('limit', limit);
     return request(`/api/history/statement?${params}`);
   },
+  getLocalTrades: ({ limit } = {}) => {
+    const params = new URLSearchParams();
+    if (limit) params.set('limit', limit);
+    return request(`/api/history/local?${params}`);
+  },
+  saveLocalTrade: (body) =>
+    request('/api/history/local', { method: 'POST', body: JSON.stringify(body) }),
+  closeLocalTrade: (id, body) =>
+    request(`/api/history/local/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   getContractsFor: (symbol) => request(`/api/markets/contracts/${symbol}`),
   getLiveSymbols: () => request('/api/markets/symbols/live'),
   getAutomationStrategies: () => request('/api/automation/strategies'),
