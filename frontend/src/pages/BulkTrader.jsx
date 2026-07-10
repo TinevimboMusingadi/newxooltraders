@@ -143,7 +143,7 @@ export default function BulkTrader() {
           <input type="number" min={100} max={5000} value={lookback} onChange={(e) => setLookback(Number(e.target.value))} />
         </label>
         <button type="button" className="btn btn-secondary ai-scanner-btn" disabled={scanning} onClick={runAiScanner}>
-          <Cpu size={14} /> {scanning ? 'Scanning…' : 'AI Scanner'}
+          <Cpu size={14} /> {scanning ? 'Scanning…' : 'Digit Scanner'}
         </button>
       </div>
 
