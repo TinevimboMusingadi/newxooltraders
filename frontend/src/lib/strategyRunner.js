@@ -1,3 +1,5 @@
+import { evaluateSignalRule } from './tickAnalysisEngine';
+
 export function createStrategyRunner({ onProposal, onBuy, onLog }) {
   let running = false;
   let stats = { wins: 0, losses: 0, pl: 0, trades: 0 };
@@ -11,13 +13,13 @@ export function createStrategyRunner({ onProposal, onBuy, onLog }) {
     start(cfg) {
       config = cfg;
       running = true;
-      log('Bot started');
+      log(config?.intervalMode ? 'Bot started (interval mode)' : 'Bot started (signal mode)');
     },
     stop() {
       running = false;
       log('Bot stopped');
     },
-    async tick(signal) {
+    async tick(signal = {}) {
       if (!running || !config) return;
       if (stats.pl >= config.takeProfit) {
         log('Take profit reached');
@@ -34,11 +36,30 @@ export function createStrategyRunner({ onProposal, onBuy, onLog }) {
         running = false;
         return;
       }
+
+      if (!config.intervalMode) {
+        if (config.signalRule && signal.snapshot) {
+          if (!evaluateSignalRule(config.signalRule, signal.snapshot)) {
+            return;
+          }
+        } else if (config.srMode && signal.snapshot) {
+          const { swingHigh, swingLow, quote } = signal.snapshot;
+          if (swingHigh == null || swingLow == null || quote == null) return;
+          const range = swingHigh - swingLow || 1;
+          const nearLow = (quote - swingLow) / range <= (config.srProximityPct || 0.15);
+          const nearHigh = (swingHigh - quote) / range <= (config.srProximityPct || 0.15);
+          if (!nearLow && !nearHigh) return;
+          signal.contractType = nearLow ? 'CALL' : 'PUT';
+        } else if (!signal?.force && !signal?.contractType) {
+          return;
+        }
+      }
+
       try {
         const stake = config.useMartingale
           ? config.baseStake * Math.pow(config.multiplier, stats.losses)
           : config.baseStake;
-        const contractType = config.contractType || 'CALL';
+        const contractType = signal.contractType || config.contractType || 'CALL';
         const proposal = await onProposal({
           ...signal,
           amount: stake,
@@ -55,7 +76,7 @@ export function createStrategyRunner({ onProposal, onBuy, onLog }) {
         stats.pl += profit;
         if (profit >= 0) stats.wins += 1;
         else stats.losses += 1;
-        log(`Trade #${stats.trades} stake ${stake}`);
+        log(`Trade #${stats.trades} ${contractType} stake ${stake.toFixed(2)}`);
       } catch (err) {
         log(`Error: ${err.message}`);
       }
@@ -67,22 +88,44 @@ export const BOT_PRESETS = [
   {
     id: 'speed-rise-fall',
     name: 'Speed Rise/Fall',
-    config: { baseStake: 1, useMartingale: false, multiplier: 2, takeProfit: 10, stopLoss: 10, maxConsecutiveLosses: 3 },
+    config: { baseStake: 1, useMartingale: false, multiplier: 2, takeProfit: 10, stopLoss: 10, maxConsecutiveLosses: 3, intervalMode: true },
   },
   {
     id: 'apex-martingale',
     name: 'Apex Martingale',
-    config: { baseStake: 1, useMartingale: true, multiplier: 2, takeProfit: 50, stopLoss: 25, maxConsecutiveLosses: 5 },
+    config: { baseStake: 1, useMartingale: true, multiplier: 2, takeProfit: 50, stopLoss: 25, maxConsecutiveLosses: 5, intervalMode: true },
   },
   {
     id: 'digit-even',
     name: 'Digit Even Hunter',
-    config: { baseStake: 0.5, useMartingale: true, multiplier: 1.2, takeProfit: 20, stopLoss: 15, maxConsecutiveLosses: 4, contractType: 'DIGITEVEN', durationTicks: 1 },
+    config: {
+      baseStake: 0.5,
+      useMartingale: true,
+      multiplier: 1.2,
+      takeProfit: 20,
+      stopLoss: 15,
+      maxConsecutiveLosses: 4,
+      contractType: 'DIGITEVEN',
+      durationTicks: 1,
+      intervalMode: false,
+      signalRule: { type: 'even_pct', side: 'DIGITEVEN', threshold: 58, minTicks: 40 },
+    },
   },
   {
     id: 'volatility-call',
     name: 'Volatility Rise',
-    config: { baseStake: 1, useMartingale: false, multiplier: 2, takeProfit: 30, stopLoss: 20, maxConsecutiveLosses: 3, contractType: 'CALL', durationMin: 1 },
+    config: {
+      baseStake: 1,
+      useMartingale: false,
+      multiplier: 2,
+      takeProfit: 30,
+      stopLoss: 20,
+      maxConsecutiveLosses: 3,
+      contractType: 'CALL',
+      durationMin: 1,
+      intervalMode: false,
+      signalRule: { type: 'rise_pct', side: 'CALL', threshold: 55, minTicks: 30 },
+    },
   },
 ];
 
@@ -92,11 +135,20 @@ export function evaluateAutomatedRule(type, rule, stream) {
     return pct >= rule.threshold;
   }
   if (type === 'over_under_digits') {
-    const digits = (stream.evenOddHistory || []).slice(-rule.lookback);
+    const digits = (stream.digitHistory || []).slice(-rule.lookback);
     if (digits.length < rule.lookback) return false;
-    return digits.every(() => stream.lastDigit != null && stream.lastDigit > rule.compareDigit);
+    if (rule.side === 'DIGITUNDER') {
+      return digits.every((d) => d < rule.compareDigit);
+    }
+    return digits.every((d) => d > rule.compareDigit);
   }
   return false;
+}
+
+export function computeSwingLevels(quotes, lookback = 50) {
+  const slice = quotes.slice(-lookback);
+  if (slice.length < 5) return { swingHigh: null, swingLow: null };
+  return { swingHigh: Math.max(...slice), swingLow: Math.min(...slice) };
 }
 
 export function createAutomatedRunner({ getProposal, buyContract, onTrade }) {
