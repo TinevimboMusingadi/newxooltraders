@@ -8,6 +8,7 @@ import { useTradingWs } from '../context/TradingWsContext';
 import { useTradingFooter } from '../context/TradingFooterContext';
 import { useTradeSession } from '../context/TradeSessionContext';
 import { useAuth } from '../hooks/useAuth';
+import WorkspacePageHeader from '../components/WorkspacePageHeader';
 
 const QUICK_STRATEGY = `<xml xmlns="https://developers.google.com/blockly/xml">
   <block type="trade_parameters" x="20" y="20">
@@ -21,6 +22,7 @@ const QUICK_STRATEGY = `<xml xmlns="https://developers.google.com/blockly/xml">
 export default function Builder() {
   const blocklyDiv = useRef(null);
   const workspaceRef = useRef(null);
+  const blocklyRef = useRef(null);
   const [strategies, setStrategies] = useState([]);
   const [name, setName] = useState('My strategy');
   const { selectedSymbol } = useMarket();
@@ -38,6 +40,7 @@ export default function Builder() {
       const { defineTradingBlocks, registerTradingGenerators } = await import('../lib/blocklyBlocks');
       defineTradingBlocks(Blockly);
       registerTradingGenerators(Blockly);
+      blocklyRef.current = Blockly;
 
       workspace = Blockly.inject(blocklyDiv.current, {
         toolbox: {
@@ -60,22 +63,27 @@ export default function Builder() {
     return () => workspace?.dispose?.();
   }, []);
 
+  const undo = () => workspaceRef.current?.undo?.(false);
+  const redo = () => workspaceRef.current?.undo?.(true);
+  const zoomIn = () => workspaceRef.current?.zoomCenter?.(1);
+  const zoomOut = () => workspaceRef.current?.zoomCenter?.(-1);
+
   const save = async () => {
-    const Blockly = await import('blockly');
+    const Blockly = blocklyRef.current || await import('blockly');
     const xml = Blockly.Xml.domToText(Blockly.Xml.workspaceToDom(workspaceRef.current));
     await api.saveBotStrategy({ name, symbol: selectedSymbol, xml });
     toast.success('Strategy saved');
   };
 
   const loadQuick = async () => {
-    const Blockly = await import('blockly');
+    const Blockly = blocklyRef.current || await import('blockly');
     workspaceRef.current.clear();
     Blockly.Xml.domToWorkspace(Blockly.utils.xml.textToDom(QUICK_STRATEGY), workspaceRef.current);
   };
 
   const run = async () => {
     if (!connected) return;
-    const Blockly = await import('blockly');
+    const Blockly = blocklyRef.current || await import('blockly');
     const xml = Blockly.Xml.domToText(Blockly.Xml.workspaceToDom(workspaceRef.current));
     const strategy = compileBlocklyXml(xml);
     const proposal = await getProposal({
@@ -98,10 +106,10 @@ export default function Builder() {
 
   return (
     <div className="builder-page">
-      <div className="page-header-block">
-        <h1 className="heading-lg">Bot Builder</h1>
-        <p className="text-secondary">Visual Blockly strategies — save, load, and run on live Deriv data.</p>
-      </div>
+      <WorkspacePageHeader
+        title="Bot Builder"
+        subtitle="Visual Blockly strategies — trade_parameters drive execution; digit blocks are experimental."
+      />
 
       <div className="builder-toolbar card">
         <button type="button" className="btn btn-primary btn-sm" onClick={loadQuick}>Quick Strategy</button>
@@ -112,7 +120,12 @@ export default function Builder() {
 
       <div className="builder-workspace card">
         <div className="builder-canvas-toolbar">
-          <Undo size={16} /><Redo size={16} /><Grid3x3 size={16} /><ZoomIn size={16} /><ZoomOut size={16} /><FolderOpen size={16} />
+          <button type="button" className="builder-tool-btn" onClick={undo} title="Undo"><Undo size={16} /></button>
+          <button type="button" className="builder-tool-btn" onClick={redo} title="Redo"><Redo size={16} /></button>
+          <span className="builder-tool-sep"><Grid3x3 size={16} /></span>
+          <button type="button" className="builder-tool-btn" onClick={zoomIn} title="Zoom in"><ZoomIn size={16} /></button>
+          <button type="button" className="builder-tool-btn" onClick={zoomOut} title="Zoom out"><ZoomOut size={16} /></button>
+          <button type="button" className="builder-tool-btn" onClick={loadQuick} title="Load template"><FolderOpen size={16} /></button>
         </div>
         <div ref={blocklyDiv} className="blockly-mount" />
       </div>

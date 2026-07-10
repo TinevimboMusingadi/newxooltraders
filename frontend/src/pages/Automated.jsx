@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import MarketPicker from '../components/MarketPicker';
+import WorkspacePageHeader from '../components/WorkspacePageHeader';
 import { useMarket } from '../context/MarketContext';
 import { useDigitStream } from '../hooks/useDigitStream';
 import { useTradingWs } from '../context/TradingWsContext';
 import { useAuth } from '../hooks/useAuth';
 import { useTradeSession } from '../context/TradeSessionContext';
 import { evaluateAutomatedRule, createAutomatedRunner } from '../lib/strategyRunner';
+import { useTradingFooter } from '../context/TradingFooterContext';
 
 function RuleCard({ title, children, onStart, onStop, running, status }) {
   return (
@@ -32,10 +34,11 @@ export default function Automated() {
   const { connected, getProposal, buyContract } = useTradingWs();
   const stream = useDigitStream(selectedSymbol);
   const { recordTrade } = useTradeSession();
+  const { setRunHandler, clearRunHandler } = useTradingFooter();
   const account = user?.accounts?.find((a) => a.accountId === user?.selectedAccountId);
 
   const [evenRule, setEvenRule] = useState({ threshold: 60, side: 'DIGITEVEN', ticks: 1, stake: 0.5, martingale: 1.2 });
-  const [ouRule, setOuRule] = useState({ lookback: 3, compareDigit: 5, operator: 'gt', side: 'DIGITOVER', prediction: 4, ticks: 1, stake: 0.5, martingale: 1.2 });
+  const [ouRule, setOuRule] = useState({ lookback: 3, compareDigit: 5, side: 'DIGITOVER', prediction: 4, ticks: 1, stake: 0.5, martingale: 1.2 });
   const [runningEven, setRunningEven] = useState(false);
   const [runningOu, setRunningOu] = useState(false);
   const evenRunner = useRef(null);
@@ -87,12 +90,27 @@ export default function Automated() {
     return () => clearInterval(t);
   }, [runningOu, connected, ouRule, stream, selectedSymbol, account]);
 
+  const anyRunning = runningEven || runningOu;
+  const toggleAll = useCallback(() => {
+    if (anyRunning) {
+      setRunningEven(false);
+      setRunningOu(false);
+    } else {
+      setRunningEven(true);
+    }
+  }, [anyRunning]);
+
+  useEffect(() => {
+    setRunHandler(toggleAll, anyRunning ? 'Stop Rules' : 'Start Even Rule');
+    return () => clearRunHandler();
+  }, [toggleAll, anyRunning, setRunHandler, clearRunHandler]);
+
   return (
     <div className="automated-page">
-      <div className="page-header-block">
-        <h1 className="heading-lg">Automated</h1>
-        <p className="text-secondary">Conditional digit rules with live market data.</p>
-      </div>
+      <WorkspacePageHeader
+        title="Rules"
+        subtitle="Conditional digit rules with live market data — even% and digit streak triggers."
+      />
 
       <div className="automated-grid">
         <RuleCard
@@ -123,6 +141,7 @@ export default function Automated() {
         <RuleCard
           title="Over/Under (Digits)"
           running={runningOu}
+          status={`Last digits: ${(stream.digitHistory || []).slice(-5).join(' ') || '—'}`}
           onStart={() => setRunningOu(true)}
           onStop={() => setRunningOu(false)}
         >
