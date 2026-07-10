@@ -95,7 +95,15 @@ export default function Builder() {
     const price = proposal.proposal?.ask_price;
     if (!id || price == null) throw new Error('No proposal');
     await buyContract(String(id), price);
-    recordTrade({ message: 'Contract bought', type: 'builder' });
+    recordTrade({
+      message: 'Contract bought',
+      type: 'builder',
+      symbol: strategy.symbol || selectedSymbol,
+      contractType: strategy.contractType,
+      contractId: null,
+      buyPrice: price,
+      status: 'open',
+    });
     toast.success('Strategy executed');
   };
 
