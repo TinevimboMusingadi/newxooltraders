@@ -40,6 +40,7 @@ export function useProfitTable({ from, to, limit = 50, offset = 0 } = {}) {
     queryFn: () => api.getProfitTable({ from, to, limit, offset }),
     staleTime: 30_000,
     enabled: true,
+    retry: 1,
   });
 }
 
@@ -49,6 +50,16 @@ export function useStatement({ from, to, actionType, limit = 50 } = {}) {
     queryFn: () => api.getStatement({ from, to, actionType, limit }),
     staleTime: 30_000,
     enabled: true,
+    retry: 1,
+  });
+}
+
+export function useLocalTrades({ limit = 100 } = {}) {
+  return useQuery({
+    queryKey: ['localTrades', { limit }],
+    queryFn: () => api.getLocalTrades({ limit }),
+    staleTime: 10_000,
+    refetchInterval: 30_000,
   });
 }
 
