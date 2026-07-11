@@ -10,15 +10,17 @@ import { useTheme } from '../context/ThemeContext';
 import { ChartSkeleton } from './ui/Skeleton';
 import { isValidSymbol } from '../lib/symbolUtils';
 import { useChartToolkit } from '../hooks/useChartToolkit';
+import {
+  HISTORY_PAGE,
+  MAX_TICK_POINTS,
+  shouldLoadOlderHistory,
+  buildOlderHistoryRequest,
+  prependHistory,
+  capHistory,
+} from '../lib/chartHistory';
 
 const PUBLIC_WS = 'wss://api.derivws.com/trading/v1/options/ws/public';
-const MAX_POINTS = 120;
-
-function formatPrice(symbol, price) {
-  if (symbol?.startsWith('frx')) return price.toFixed(4);
-  if (symbol?.startsWith('cry')) return price.toFixed(2);
-  return price.toFixed(2);
-}
+const INITIAL_TICKS = 200;
 
 function bandOffset(price, growthRate) {
   if (!price || !growthRate) return 0;
@@ -50,10 +52,14 @@ export default function TraderLineChart({
   const labelTopRef = useRef(null);
   const labelBottomRef = useRef(null);
   const cursorDotRef = useRef(null);
+  const reqIdRef = useRef(1);
+  const loadingOlderRef = useRef(false);
+  const noMoreHistoryRef = useRef(false);
+  const followLiveRef = useRef(true);
 
   const [loading, setLoading] = useState(true);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [currentPrice, setCurrentPrice] = useState(null);
-  const [prevPrice, setPrevPrice] = useState(null);
   const [dataVersion, setDataVersion] = useState(0);
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -241,10 +247,6 @@ export default function TraderLineChart({
     };
     window.addEventListener('resize', handleResize);
 
-    chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
-      if (priceRef.current != null) syncOverlays(priceRef.current);
-    });
-
     return () => {
       window.removeEventListener('resize', handleResize);
       chart.remove();
@@ -253,22 +255,53 @@ export default function TraderLineChart({
   }, [isDark, syncOverlays]);
 
   useEffect(() => {
-    if (!isValidSymbol(symbol) || !seriesRef.current) {
+    if (!isValidSymbol(symbol) || !seriesRef.current || !chartRef.current) {
       setLoading(false);
       return;
     }
 
     setLoading(true);
     setCurrentPrice(null);
-    setPrevPrice(null);
     priceRef.current = null;
     pointsRef.current = [];
+    loadingOlderRef.current = false;
+    noMoreHistoryRef.current = false;
+    followLiveRef.current = true;
     seriesRef.current.setData([]);
     clearAllPriceLines(seriesRef.current);
 
     const ws = new WebSocket(PUBLIC_WS);
     wsRef.current = ws;
-    let reqId = 1;
+    reqIdRef.current = 1;
+
+    const requestOlder = () => {
+      if (loadingOlderRef.current || noMoreHistoryRef.current) return;
+      if (ws.readyState !== WebSocket.OPEN) return;
+      const earliest = pointsRef.current[0]?.time;
+      const payload = buildOlderHistoryRequest({
+        symbol,
+        earliestTime: earliest,
+        style: 'ticks',
+        count: HISTORY_PAGE,
+        reqId: reqIdRef.current++,
+      });
+      if (!payload) return;
+      loadingOlderRef.current = true;
+      setLoadingOlder(true);
+      ws.send(JSON.stringify(payload));
+    };
+
+    const onVisibleRange = (range) => {
+      if (!range) return;
+      const bars = pointsRef.current.length;
+      followLiveRef.current = range.to >= bars - 5;
+      if (shouldLoadOlderHistory(range, bars, 15)) {
+        requestOlder();
+      }
+      if (priceRef.current != null) syncOverlays(priceRef.current);
+    };
+
+    chartRef.current.timeScale().subscribeVisibleLogicalRangeChange(onVisibleRange);
 
     const pushPoint = (epoch, quote) => {
       const points = pointsRef.current;
@@ -279,22 +312,21 @@ export default function TraderLineChart({
         seriesRef.current.update(point);
       } else {
         points.push(point);
-        if (points.length > MAX_POINTS) points.shift();
-        if (points.length === 1) {
-          seriesRef.current.setData(points);
+        pointsRef.current = capHistory(points, MAX_TICK_POINTS);
+        if (pointsRef.current.length === 1) {
+          seriesRef.current.setData(pointsRef.current);
         } else {
           seriesRef.current.update(point);
         }
       }
       priceRef.current = quote;
-      setCurrentPrice((prev) => {
-        if (prev != null) setPrevPrice(prev);
-        return quote;
-      });
+      setCurrentPrice(quote);
       onPriceUpdate?.(quote);
       syncOverlays(quote);
-      chartRef.current?.timeScale().scrollToRealTime();
-      if (points.length % 5 === 0) {
+      if (followLiveRef.current) {
+        chartRef.current?.timeScale().scrollToRealTime();
+      }
+      if (pointsRef.current.length % 5 === 0) {
         setDataVersion((v) => v + 1);
         refreshIndicators();
       }
@@ -304,12 +336,12 @@ export default function TraderLineChart({
       ws.send(JSON.stringify({
         ticks_history: symbol,
         adjust_start_time: 1,
-        count: MAX_POINTS,
+        count: INITIAL_TICKS,
         end: 'latest',
         style: 'ticks',
-        req_id: reqId++,
+        req_id: reqIdRef.current++,
       }));
-      ws.send(JSON.stringify({ ticks: symbol, subscribe: 1, req_id: reqId++ }));
+      ws.send(JSON.stringify({ ticks: symbol, subscribe: 1, req_id: reqIdRef.current++ }));
     };
 
     ws.onmessage = (event) => {
@@ -318,7 +350,33 @@ export default function TraderLineChart({
         const times = data.history.times || [];
         const prices = data.history.prices;
         const seeded = times.map((t, i) => ({ time: t, value: Number(prices[i]) }));
-        pointsRef.current = seeded.slice(-MAX_POINTS);
+
+        const isOlderPage = loadingOlderRef.current
+          && pointsRef.current.length
+          && seeded[seeded.length - 1].time < pointsRef.current[0].time;
+
+        if (isOlderPage) {
+          const timeScale = chartRef.current?.timeScale();
+          const prevRange = timeScale?.getVisibleLogicalRange();
+          const beforeLen = pointsRef.current.length;
+          const merged = capHistory(prependHistory(pointsRef.current, seeded), MAX_TICK_POINTS);
+          const added = merged.length - beforeLen;
+          pointsRef.current = merged;
+          seriesRef.current.setData(merged);
+          if (prevRange && added > 0) {
+            timeScale.setVisibleLogicalRange({
+              from: prevRange.from + added,
+              to: prevRange.to + added,
+            });
+          }
+          if (seeded.length < HISTORY_PAGE / 2) noMoreHistoryRef.current = true;
+          loadingOlderRef.current = false;
+          setLoadingOlder(false);
+          setDataVersion((v) => v + 1);
+          return;
+        }
+
+        pointsRef.current = seeded;
         seriesRef.current.setData(pointsRef.current);
         const last = Number(prices[prices.length - 1]);
         priceRef.current = last;
@@ -326,24 +384,42 @@ export default function TraderLineChart({
         onPriceUpdate?.(last);
         syncOverlays(last);
         setLoading(false);
+        loadingOlderRef.current = false;
+        setLoadingOlder(false);
         setDataVersion((v) => v + 1);
       }
+
+      if (data.msg_type === 'history' && (!data.history?.prices?.length) && loadingOlderRef.current) {
+        noMoreHistoryRef.current = true;
+        loadingOlderRef.current = false;
+        setLoadingOlder(false);
+      }
+
       if (data.msg_type === 'tick' && data.tick) {
         pushPoint(data.tick.epoch, Number(data.tick.quote));
         setLoading(false);
       }
     };
 
-    ws.onerror = () => setLoading(false);
+    ws.onerror = () => {
+      setLoading(false);
+      loadingOlderRef.current = false;
+      setLoadingOlder(false);
+    };
 
     const ping = setInterval(() => {
       if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ ping: 1, req_id: reqId++ }));
+        ws.send(JSON.stringify({ ping: 1, req_id: reqIdRef.current++ }));
       }
     }, 45000);
 
     return () => {
       clearInterval(ping);
+      try {
+        chartRef.current?.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRange);
+      } catch {
+        /* ignore */
+      }
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ forget_all: 'ticks' }));
       }
@@ -361,8 +437,9 @@ export default function TraderLineChart({
     <div className="trader-line-chart">
       <div ref={stageRef} className="trader-chart-stage">
         <div className="trader-chart-overlays">
-        {overlay}
-        {toolbarOverlay}
+          {overlay}
+          {toolbarOverlay}
+          {loadingOlder && <span className="chart-loading-older trader-loading-older">Loading older…</span>}
         </div>
         <div className="chart-container trader-chart-container">
           {!chartReady && (
