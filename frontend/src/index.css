@@ -3437,10 +3437,130 @@ button {
   top: 52px;
 }
 
-.trade-page .trade-layout {
+.trade-page.trade-layout {
   grid-template-columns: minmax(0, 1fr) 288px;
   gap: 0;
   min-height: calc(100vh - 82px);
+  height: calc(100vh - 82px);
+}
+
+.trade-page.trade-layout.trade-chart-expanded {
+  grid-template-columns: 1fr;
+}
+
+.trade-chart-chrome {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+[data-theme='light'] .trade-chart-chrome {
+  background: rgba(107, 51, 238, 0.04);
+}
+
+.trade-chart-layouts {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 4px;
+  color: var(--text-muted);
+}
+
+.chart-layout-btn {
+  min-width: 28px;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.chart-layout-btn.active {
+  color: #9d6cff;
+  border-color: rgba(157, 108, 255, 0.45);
+  background: rgba(157, 108, 255, 0.12);
+}
+
+.trade-multi-chart-grid {
+  flex: 1;
+  display: grid;
+  gap: 1px;
+  min-height: 0;
+  background: var(--border-subtle);
+}
+
+.trade-chart-pane {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card, #0f0f14);
+  position: relative;
+}
+
+.trade-chart-pane .trader-line-chart,
+.trade-chart-pane .trade-candle-wrap,
+.trade-chart-pane .live-chart-wrap {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+.trade-chart-pane .trader-chart-stage,
+.trade-chart-pane .chart-container {
+  min-height: 180px;
+}
+
+.chart-pane-close {
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.chart-page {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 120px);
+}
+
+.chart-page-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 200px);
+  padding: 0;
+  overflow: hidden;
+}
+
+.chart-page-main .live-chart-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-page-main .chart-container {
+  flex: 1;
+  min-height: 420px;
 }
 
 .trade-page .trade-chart-section,
