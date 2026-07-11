@@ -5,6 +5,14 @@ import { useTheme } from '../context/ThemeContext';
 import { ChartSkeleton } from './ui/Skeleton';
 import { formatSymbolLabel, isValidSymbol } from '../lib/symbolUtils';
 import { useChartToolkit } from '../hooks/useChartToolkit';
+import {
+  HISTORY_PAGE,
+  MAX_CANDLES,
+  shouldLoadOlderHistory,
+  buildOlderHistoryRequest,
+  prependHistory,
+  capHistory,
+} from '../lib/chartHistory';
 
 export default function LiveChart({
   symbol,
@@ -25,8 +33,13 @@ export default function LiveChart({
   const lastCandleRef = useRef(null);
   const candlesRef = useRef([]);
   const wsRef = useRef(null);
+  const reqIdRef = useRef(1);
+  const loadingOlderRef = useRef(false);
+  const noMoreHistoryRef = useRef(false);
+  const followLiveRef = useRef(true);
   const [granularity, setGranularity] = useState(DEFAULT_GRANULARITY);
   const [loading, setLoading] = useState(true);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [ohlc, setOhlc] = useState(null);
   const [currentPrice, setCurrentPrice] = useState(null);
   const [chartHeight, setChartHeight] = useState(height);
@@ -73,7 +86,12 @@ export default function LiveChart({
       },
       crosshair: { mode: CrosshairMode.Normal },
       rightPriceScale: { borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)' },
-      timeScale: { borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)', timeVisible: true },
+      timeScale: {
+        borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)',
+        timeVisible: true,
+        fixLeftEdge: false,
+        rightOffset: 8,
+      },
       width: containerRef.current.clientWidth,
       height: fill ? (wrapRef.current?.clientHeight || height) : chartHeight,
     });
@@ -122,7 +140,7 @@ export default function LiveChart({
   }, [isDark, chartHeight, fill]);
 
   useEffect(() => {
-    if (!isValidSymbol(symbol) || !seriesRef.current) {
+    if (!isValidSymbol(symbol) || !seriesRef.current || !chartRef.current) {
       setLoading(false);
       return;
     }
@@ -132,6 +150,9 @@ export default function LiveChart({
     seriesRef.current.setData([]);
     lastCandleRef.current = null;
     candlesRef.current = [];
+    loadingOlderRef.current = false;
+    noMoreHistoryRef.current = false;
+    followLiveRef.current = true;
     if (priceLineRef.current) {
       try {
         seriesRef.current.removePriceLine(priceLineRef.current);
@@ -143,23 +164,8 @@ export default function LiveChart({
 
     const ws = new WebSocket('wss://api.derivws.com/trading/v1/options/ws/public');
     wsRef.current = ws;
-    let reqId = 1;
+    reqIdRef.current = 1;
     const gran = granularity.value;
-
-    ws.onopen = () => {
-      ws.send(
-        JSON.stringify({
-          ticks_history: symbol,
-          adjust_start_time: 1,
-          count: 300,
-          end: 'latest',
-          granularity: gran,
-          style: 'candles',
-          req_id: reqId++,
-        }),
-      );
-      ws.send(JSON.stringify({ ticks: symbol, subscribe: 1, req_id: reqId++ }));
-    };
 
     const updatePriceLine = (price) => {
       if (!seriesRef.current) return;
@@ -177,25 +183,105 @@ export default function LiveChart({
       }
     };
 
+    const requestOlder = () => {
+      if (loadingOlderRef.current || noMoreHistoryRef.current) return;
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      const earliest = candlesRef.current[0]?.time;
+      const payload = buildOlderHistoryRequest({
+        symbol,
+        earliestTime: earliest,
+        style: 'candles',
+        granularity: gran,
+        count: HISTORY_PAGE,
+        reqId: reqIdRef.current++,
+      });
+      if (!payload) return;
+      loadingOlderRef.current = true;
+      setLoadingOlder(true);
+      ws.send(JSON.stringify(payload));
+    };
+
+    const onVisibleRange = (range) => {
+      if (!range) return;
+      const bars = candlesRef.current.length;
+      // User left the live edge if the right side isn't near the last bar
+      followLiveRef.current = range.to >= bars - 3;
+      if (shouldLoadOlderHistory(range, bars)) {
+        requestOlder();
+      }
+    };
+
+    chartRef.current.timeScale().subscribeVisibleLogicalRangeChange(onVisibleRange);
+
+    ws.onopen = () => {
+      ws.send(
+        JSON.stringify({
+          ticks_history: symbol,
+          adjust_start_time: 1,
+          count: HISTORY_PAGE,
+          end: 'latest',
+          granularity: gran,
+          style: 'candles',
+          req_id: reqIdRef.current++,
+        }),
+      );
+      ws.send(JSON.stringify({ ticks: symbol, subscribe: 1, req_id: reqIdRef.current++ }));
+    };
+
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
 
       if (data.msg_type === 'candles' && data.candles?.length) {
-        const candles = data.candles.map((c) => ({
+        const mapped = data.candles.map((c) => ({
           time: c.epoch,
           open: Number(c.open),
           high: Number(c.high),
           low: Number(c.low),
           close: Number(c.close),
         }));
-        seriesRef.current.setData(candles);
-        candlesRef.current = candles;
-        lastCandleRef.current = candles[candles.length - 1];
-        const lastClose = candles[candles.length - 1].close;
+
+        const isOlderPage = loadingOlderRef.current
+          && candlesRef.current.length
+          && mapped[mapped.length - 1].time < candlesRef.current[0].time;
+
+        if (isOlderPage) {
+          const timeScale = chartRef.current?.timeScale();
+          const prevRange = timeScale?.getVisibleLogicalRange();
+          const beforeLen = candlesRef.current.length;
+          const merged = capHistory(prependHistory(candlesRef.current, mapped), MAX_CANDLES);
+          const added = merged.length - beforeLen;
+          candlesRef.current = merged;
+          seriesRef.current.setData(merged);
+          if (prevRange && added > 0) {
+            timeScale.setVisibleLogicalRange({
+              from: prevRange.from + added,
+              to: prevRange.to + added,
+            });
+          }
+          if (mapped.length < HISTORY_PAGE / 2) noMoreHistoryRef.current = true;
+          loadingOlderRef.current = false;
+          setLoadingOlder(false);
+          setDataVersion((v) => v + 1);
+          return;
+        }
+
+        // Initial / latest history
+        seriesRef.current.setData(mapped);
+        candlesRef.current = mapped;
+        lastCandleRef.current = mapped[mapped.length - 1];
+        const lastClose = mapped[mapped.length - 1].close;
         setCurrentPrice(lastClose);
         updatePriceLine(lastClose);
         setLoading(false);
+        loadingOlderRef.current = false;
+        setLoadingOlder(false);
         setDataVersion((v) => v + 1);
+      }
+
+      if (data.msg_type === 'candles' && (!data.candles || !data.candles.length) && loadingOlderRef.current) {
+        noMoreHistoryRef.current = true;
+        loadingOlderRef.current = false;
+        setLoadingOlder(false);
       }
 
       if (data.msg_type === 'tick' && data.tick) {
@@ -211,7 +297,7 @@ export default function LiveChart({
         if (!last || last.time !== bucket) {
           const newCandle = { time: bucket, open: quote, high: quote, low: quote, close: quote };
           lastCandleRef.current = newCandle;
-          candlesRef.current = [...candlesRef.current, newCandle].slice(-300);
+          candlesRef.current = capHistory([...candlesRef.current, newCandle], MAX_CANDLES);
           seriesRef.current.update(newCandle);
         } else {
           const updated = {
@@ -225,6 +311,9 @@ export default function LiveChart({
           if (arr.length) arr[arr.length - 1] = updated;
           candlesRef.current = arr;
           seriesRef.current.update(updated);
+        }
+        if (followLiveRef.current) {
+          chartRef.current?.timeScale().scrollToRealTime();
         }
         if (candlesRef.current.length % 3 === 0) refreshIndicators();
       }
@@ -246,16 +335,25 @@ export default function LiveChart({
       }
     };
 
-    ws.onerror = () => setLoading(false);
+    ws.onerror = () => {
+      setLoading(false);
+      loadingOlderRef.current = false;
+      setLoadingOlder(false);
+    };
 
     const ping = setInterval(() => {
       if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ ping: 1, req_id: reqId++ }));
+        ws.send(JSON.stringify({ ping: 1, req_id: reqIdRef.current++ }));
       }
     }, 45000);
 
     return () => {
       clearInterval(ping);
+      try {
+        chartRef.current?.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRange);
+      } catch {
+        /* ignore */
+      }
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ forget_all: 'ticks' }));
       }
@@ -284,6 +382,7 @@ export default function LiveChart({
             {currentPrice != null && (
               <span className="chart-live-price mono">{currentPrice.toFixed(4)}</span>
             )}
+            {loadingOlder && <span className="chart-loading-older">Loading older…</span>}
           </div>
           <div className="chart-toolbar-tf">
             {GRANULARITIES.map((g) => (
