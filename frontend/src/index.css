@@ -1029,6 +1029,28 @@ button {
   color: #9d6cff;
 }
 
+.chart-loading-older {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  animation: chart-older-pulse 1.2s ease-in-out infinite;
+}
+
+.trader-loading-older {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  z-index: 4;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--workspace-surface, rgba(15, 15, 20, 0.75));
+  pointer-events: none;
+}
+
+@keyframes chart-older-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
 .chart-toolbar-tf {
   display: flex;
   gap: 4px;
