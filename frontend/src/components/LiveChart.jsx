@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createChart, CrosshairMode, CandlestickSeries, LineStyle } from 'lightweight-charts';
-import { GRANULARITIES, DEFAULT_GRANULARITY } from '../lib/chartUtils';
+import { GRANULARITIES, DEFAULT_GRANULARITY, formatChartCrosshairTime, formatChartTickMark } from '../lib/chartUtils';
 import { useTheme } from '../context/ThemeContext';
 import { ChartSkeleton } from './ui/Skeleton';
 import { formatSymbolLabel, isValidSymbol } from '../lib/symbolUtils';
@@ -80,6 +80,9 @@ export default function LiveChart({
         background: { color: 'transparent' },
         textColor: isDark ? '#a0a0ab' : '#555',
       },
+      localization: {
+        timeFormatter: formatChartCrosshairTime,
+      },
       grid: {
         vertLines: { color: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)' },
         horzLines: { color: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)' },
@@ -89,8 +92,10 @@ export default function LiveChart({
       timeScale: {
         borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)',
         timeVisible: true,
+        secondsVisible: true,
         fixLeftEdge: false,
         rightOffset: 8,
+        tickMarkFormatter: formatChartTickMark,
       },
       width: containerRef.current.clientWidth,
       height: fill ? (wrapRef.current?.clientHeight || height) : chartHeight,
