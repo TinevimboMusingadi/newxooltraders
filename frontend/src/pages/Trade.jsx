@@ -1,15 +1,13 @@
 import { useCallback, useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { RefreshCw, Wifi, WifiOff, ChevronDown } from 'lucide-react';
+import { RefreshCw, Wifi, WifiOff, Plus, Maximize2, Minimize2, LayoutGrid } from 'lucide-react';
 import RealTradeConfirmModal from '../components/RealTradeConfirmModal';
-import TraderLineChart from '../components/TraderLineChart';
-import LiveChart from '../components/LiveChart';
 import TradePanel from '../components/TradePanel';
 import OpenPositions from '../components/OpenPositions';
-import MarketPicker from '../components/MarketPicker';
 import EvenOddStrip from '../components/EvenOddStrip';
 import CollapsiblePanel from '../components/CollapsiblePanel';
+import TradeChartPane from '../components/TradeChartPane';
 import { CardSkeleton } from '../components/ui/Skeleton';
 import { usePanelState } from '../hooks/usePanelState';
 import { useAuth } from '../hooks/useAuth';
@@ -17,18 +15,18 @@ import { useMarket } from '../context/MarketContext';
 import { useTradingWs } from '../context/TradingWsContext';
 import { useDigitStream } from '../hooks/useDigitStream';
 import { useTradeSession } from '../context/TradeSessionContext';
-import { useActiveSymbols } from '../hooks/useActiveSymbols';
 import { api } from '../lib/api';
 import {
   getAccountMode,
   hasRealTradeConfirmation,
   isDemoAccount,
 } from '../lib/accountDisplay';
-import { formatSymbolLabel, isValidSymbol, sanitizeSymbol } from '../lib/symbolUtils';
-import { marketFlag } from '../lib/currencyFlags';
-import ChartToolsToolbar from '../components/ChartToolsToolbar';
+import { isValidSymbol, sanitizeSymbol } from '../lib/symbolUtils';
+import { CHART_LAYOUTS } from '../lib/chartUtils';
 
-const DEFAULT_INDICATORS = { sma: true, ema: false, bb: false, rsi: false };
+function newPaneId() {
+  return `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+}
 
 export default function Trade() {
   const { user, refresh } = useAuth();
@@ -38,8 +36,6 @@ export default function Trade() {
     () => sanitizeSymbol(params.get('symbol') || selectedSymbol),
     [params, selectedSymbol],
   );
-  const { symbols } = useActiveSymbols();
-  const currentMeta = symbols.find((s) => s.symbol === symbol);
   const { evenOddHistory } = useDigitStream(isValidSymbol(symbol) ? symbol : null);
   const { recordTrade } = useTradeSession();
   const accountId = user?.selectedAccountId;
@@ -53,11 +49,12 @@ export default function Trade() {
   const [closingAll, setClosingAll] = useState(false);
   const [growthRate, setGrowthRate] = useState(3);
   const [tradeMode, setTradeMode] = useState('rise_fall');
-  const [chartType, setChartType] = useState('line');
-  const [indicators, setIndicators] = useState(DEFAULT_INDICATORS);
-  const [drawMode, setDrawMode] = useState('none');
-  const [drawings, setDrawings] = useState([]);
+  const [layoutId, setLayoutId] = useState('1');
+  const [chartExpanded, setChartExpanded] = useState(false);
+  const [panes, setPanes] = useState(() => [{ id: 'main', symbol }]);
   const subscribedRef = useRef(new Set());
+
+  const layout = CHART_LAYOUTS.find((l) => l.id === layoutId) || CHART_LAYOUTS[0];
 
   const {
     connected,
@@ -84,15 +81,21 @@ export default function Trade() {
     }
   }, [selectedSymbol, symbol, selectSymbol]);
 
+  // Keep primary pane in sync with global market selection
   useEffect(() => {
+    setPanes((prev) => {
+      if (!prev.length) return [{ id: 'main', symbol }];
+      if (prev[0].symbol === symbol) return prev;
+      const next = [...prev];
+      next[0] = { ...next[0], symbol };
+      return next;
+    });
     setLastPrice(null);
-    setDrawings([]);
-    setDrawMode('none');
   }, [symbol]);
 
-  const toggleIndicator = useCallback((id) => {
-    setIndicators((prev) => ({ ...prev, [id]: !prev[id] }));
-  }, []);
+  useEffect(() => {
+    setPanes((prev) => prev.slice(0, layout.max));
+  }, [layout.max]);
 
   useEffect(() => {
     if (!connected || !openContracts?.length) return;
@@ -220,54 +223,50 @@ export default function Trade() {
     [updateContract],
   );
 
+  const onPaneSymbolChange = useCallback((paneId, nextSymbol) => {
+    const clean = sanitizeSymbol(nextSymbol);
+    setPanes((prev) => prev.map((p) => (p.id === paneId ? { ...p, symbol: clean } : p)));
+    if (paneId === panes[0]?.id || paneId === 'main') {
+      selectSymbol(clean);
+    }
+  }, [panes, selectSymbol]);
+
+  const addChart = useCallback(() => {
+    setPanes((prev) => {
+      let nextLayout = layout;
+      if (prev.length >= layout.max) {
+        const bigger = CHART_LAYOUTS.find((l) => l.max > layout.max) || layout;
+        nextLayout = bigger;
+        setLayoutId(bigger.id);
+      }
+      if (prev.length >= nextLayout.max) return prev;
+      return [...prev, { id: newPaneId(), symbol }];
+    });
+  }, [layout, symbol]);
+
+  const removePane = useCallback((paneId) => {
+    setPanes((prev) => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((p) => p.id !== paneId);
+    });
+  }, []);
+
+  const setLayout = useCallback((id) => {
+    const next = CHART_LAYOUTS.find((l) => l.id === id) || CHART_LAYOUTS[0];
+    setLayoutId(next.id);
+    setPanes((prev) => {
+      const kept = prev.slice(0, next.max);
+      if (kept.length === 0) kept.push({ id: 'main', symbol });
+      return kept;
+    });
+  }, [symbol]);
+
   const accountMode = getAccountMode(selectedAccount, accountId);
   const { open: statsOpen, toggle: toggleStats } = usePanelState('trade-stats', false);
   const { open: lastTradeOpen, toggle: toggleLastTrade } = usePanelState('last-trade', false);
 
   const showConnecting = accountId && !connected && !error;
-  const symbolLabel = formatSymbolLabel(symbol, currentMeta?.displayName);
-  const priceDecimals = symbol?.startsWith('frx') ? 4 : 2;
-  const flag = marketFlag(currentMeta?.category, symbol);
-
-  const assetPicker = (
-    <MarketPicker
-      symbol={symbol}
-      onSelect={selectSymbol}
-      trigger={(
-        <div className="trader-asset-picker">
-          <div className="trader-asset-picker-row">
-            <span className="market-flag" aria-hidden>{flag}</span>
-            <strong>{symbolLabel}</strong>
-            <ChevronDown size={12} className="trader-asset-chevron" />
-          </div>
-          <span className="mono trader-asset-price">
-            {lastPrice != null ? lastPrice.toFixed(priceDecimals) : '—'}
-          </span>
-        </div>
-      )}
-    />
-  );
-
-  const chartToolbar = (
-    <div className="trader-chart-toolbar">
-      <div className="chart-type-toggle">
-        <button type="button" className={chartType === 'line' ? 'active' : ''} onClick={() => setChartType('line')}>Line</button>
-        <button type="button" className={chartType === 'candle' ? 'active' : ''} onClick={() => setChartType('candle')}>Candles</button>
-      </div>
-      <ChartToolsToolbar
-        indicators={indicators}
-        onToggleIndicator={toggleIndicator}
-        drawMode={drawMode}
-        onDrawMode={setDrawMode}
-        onClearDrawings={() => setDrawings([])}
-        drawingCount={drawings.length}
-      />
-      <div className={`connection-badge compact ${connected ? 'online' : 'offline'}`}>
-        {connected ? <Wifi size={12} /> : <WifiOff size={12} />}
-        {connected ? 'Live' : showConnecting ? '…' : 'Off'}
-      </div>
-    </div>
-  );
+  const visiblePanes = panes.slice(0, layout.max);
 
   return (
     <>
@@ -297,39 +296,64 @@ export default function Trade() {
         </div>
       )}
 
-      <div className="trade-layout trade-page">
+      <div className={`trade-layout trade-page ${chartExpanded ? 'trade-chart-expanded' : ''}`}>
         <div className="trade-chart-section trader-chart-section">
-          {chartType === 'line' ? (
-            <TraderLineChart
-              symbol={symbol}
-              onPriceUpdate={setLastPrice}
-              growthRate={growthRate}
-              showAccumulatorBand={tradeMode === 'accumulator'}
-              overlay={assetPicker}
-              toolbarOverlay={chartToolbar}
-              indicators={indicators}
-              drawMode={drawMode}
-              drawings={drawings}
-              setDrawings={setDrawings}
-            />
-          ) : (
-            <div className="trade-candle-wrap">
-              <div className="trader-chart-overlays trade-candle-overlays">
-                {assetPicker}
-                {chartToolbar}
-              </div>
-              <LiveChart
-                symbol={symbol}
-                onPriceUpdate={setLastPrice}
-                fill
-                hideToolbar
-                indicators={indicators}
-                drawMode={drawMode}
-                drawings={drawings}
-                setDrawings={setDrawings}
-              />
+          <div className="trade-chart-chrome">
+            <div className="trade-chart-layouts" title="Chart layout">
+              <LayoutGrid size={14} />
+              {CHART_LAYOUTS.map((l) => (
+                <button
+                  key={l.id}
+                  type="button"
+                  className={`chart-layout-btn ${layoutId === l.id ? 'active' : ''}`}
+                  onClick={() => setLayout(l.id)}
+                >
+                  {l.label}
+                </button>
+              ))}
             </div>
-          )}
+            <button type="button" className="btn btn-ghost btn-xs" onClick={addChart} disabled={visiblePanes.length >= 4}>
+              <Plus size={14} /> Chart
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-xs"
+              onClick={() => setChartExpanded((v) => !v)}
+              title={chartExpanded ? 'Show trade panel' : 'Expand chart'}
+            >
+              {chartExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+              {chartExpanded ? 'Panel' : 'Expand'}
+            </button>
+            <div className={`connection-badge compact ${connected ? 'online' : 'offline'}`}>
+              {connected ? <Wifi size={12} /> : <WifiOff size={12} />}
+              {connected ? 'Live' : showConnecting ? '…' : 'Off'}
+            </div>
+          </div>
+
+          <div
+            className="trade-multi-chart-grid"
+            style={{
+              gridTemplateColumns: `repeat(${layout.cols}, minmax(0, 1fr))`,
+              gridTemplateRows: `repeat(${layout.rows}, minmax(0, 1fr))`,
+            }}
+          >
+            {visiblePanes.map((pane, i) => (
+              <TradeChartPane
+                key={pane.id}
+                pane={pane}
+                isPrimary={i === 0}
+                connected={connected}
+                showConnecting={showConnecting}
+                growthRate={growthRate}
+                showAccumulatorBand={tradeMode === 'accumulator'}
+                onSymbolChange={onPaneSymbolChange}
+                onRemove={removePane}
+                onActivate={() => {}}
+                onPriceUpdate={setLastPrice}
+              />
+            ))}
+          </div>
+
           <CollapsiblePanel
             title="Stats"
             open={statsOpen}
@@ -341,25 +365,28 @@ export default function Trade() {
             <EvenOddStrip history={evenOddHistory} max={16} />
           </CollapsiblePanel>
         </div>
-        <aside className="trade-panel-column">
-          <TradePanel
-            symbol={symbol}
-            currency={selectedAccount?.currency || balance?.currency || 'USD'}
-            connected={connected}
-            balance={balance}
-            openContracts={openContracts}
-            onTrade={handleTrade}
-            getProposal={getProposal}
-            trading={trading}
-            lastPrice={lastPrice}
-            accountMode={accountMode.mode}
-            growthRate={growthRate}
-            onGrowthRateChange={setGrowthRate}
-            mode={tradeMode}
-            onModeChange={setTradeMode}
-            compact
-          />
-        </aside>
+
+        {!chartExpanded && (
+          <aside className="trade-panel-column">
+            <TradePanel
+              symbol={symbol}
+              currency={selectedAccount?.currency || balance?.currency || 'USD'}
+              connected={connected}
+              balance={balance}
+              openContracts={openContracts}
+              onTrade={handleTrade}
+              getProposal={getProposal}
+              trading={trading}
+              lastPrice={lastPrice}
+              accountMode={accountMode.mode}
+              growthRate={growthRate}
+              onGrowthRateChange={setGrowthRate}
+              mode={tradeMode}
+              onModeChange={setTradeMode}
+              compact
+            />
+          </aside>
+        )}
       </div>
 
       {lastTrade && (
