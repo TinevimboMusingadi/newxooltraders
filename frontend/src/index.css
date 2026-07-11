@@ -2413,8 +2413,12 @@ button {
 
 /* === Open Positions === */
 .open-positions {
-  margin-top: 16px;
-  padding: 16px;
+  margin-top: 8px;
+  padding: 0;
+}
+
+.open-positions.collapsible-panel {
+  padding: 0;
 }
 
 .open-positions-header {
@@ -2422,31 +2426,108 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .open-positions-empty {
-  padding: 24px 12px;
-  text-align: center;
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.positions-table-wrap {
+  overflow-x: auto;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.positions-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.positions-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  background: var(--bg-card, var(--workspace-panel));
+  z-index: 1;
+}
+
+.positions-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.position-row-tr:hover td {
+  background: rgba(157, 108, 255, 0.06);
+}
+
+.position-ccy {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.position-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+}
+
+.positions-table td.position-actions-cell {
+  display: table-cell;
+}
+
+.position-actions-cell .position-actions-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.positions-table td.position-time {
+  color: var(--text-muted);
+}
+
+.position-time-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.position-update-tr td {
+  padding: 6px 10px 8px;
+  background: rgba(157, 108, 255, 0.04);
 }
 
 .positions-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
 }
 
 .position-card {
-  padding: 14px;
-  background: rgba(255, 255, 255, 0.02);
+  padding: 10px;
+  background: transparent;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.15s;
 }
 
 .position-card:hover {
-  border-color: rgba(107, 51, 238, 0.25);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-color: rgba(157, 108, 255, 0.3);
+  box-shadow: none;
 }
 
 .position-card-top {
@@ -2454,16 +2535,16 @@ button {
   align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .position-pl-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 8px;
+  padding: 2px 6px;
   border-radius: var(--radius-sm);
-  font-size: 0.82rem;
+  font-size: 0.75rem;
   font-weight: 700;
 }
 
@@ -2480,17 +2561,17 @@ button {
 .position-card-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-bottom: 10px;
-  font-size: 0.78rem;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 0.72rem;
 }
 
 .position-expiry-bar {
-  height: 4px;
+  height: 3px;
   background: rgba(255, 255, 255, 0.06);
   border-radius: 2px;
   overflow: hidden;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .position-expiry-fill {
@@ -2503,13 +2584,13 @@ button {
 .positions-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 6px;
+  margin-top: 8px;
 }
 
 .position-row {
-  padding: 10px 12px;
-  background: rgba(255,255,255,0.02);
+  padding: 8px 10px;
+  background: transparent;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
 }
@@ -2523,11 +2604,11 @@ button {
 
 .position-symbol {
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
 }
 
 .position-type {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
   text-transform: uppercase;
 }
@@ -3272,8 +3353,14 @@ button {
 }
 
 .trade-page .open-positions {
-  margin-top: 8px;
+  margin-top: 4px;
   border: 1px solid rgba(255, 255, 255, 0.05);
+  max-height: 220px;
+}
+
+.trade-page .open-positions .collapsible-panel-body,
+.trade-page .open-positions.collapsible-panel .collapsible-panel-body {
+  padding: 0;
 }
 
 @media (max-width: 900px) {
