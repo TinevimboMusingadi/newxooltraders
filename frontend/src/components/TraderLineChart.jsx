@@ -10,6 +10,7 @@ import { useTheme } from '../context/ThemeContext';
 import { ChartSkeleton } from './ui/Skeleton';
 import { isValidSymbol } from '../lib/symbolUtils';
 import { useChartToolkit } from '../hooks/useChartToolkit';
+import { formatChartCrosshairTime, formatChartTickMark } from '../lib/chartUtils';
 import {
   HISTORY_PAGE,
   MAX_TICK_POINTS,
@@ -200,11 +201,14 @@ export default function TraderLineChart({
         background: { color: 'transparent' },
         textColor: isDark ? '#94a3b8' : '#64748b',
       },
+      localization: {
+        timeFormatter: formatChartCrosshairTime,
+      },
       grid: {
         vertLines: { color: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)' },
         horzLines: { color: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)' },
       },
-      crosshair: { mode: CrosshairMode.Hidden },
+      crosshair: { mode: CrosshairMode.Normal },
       rightPriceScale: {
         borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
         scaleMargins: { top: 0.12, bottom: 0.08 },
@@ -216,6 +220,7 @@ export default function TraderLineChart({
         fixLeftEdge: false,
         fixRightEdge: false,
         rightOffset: 4,
+        tickMarkFormatter: formatChartTickMark,
       },
       width: containerRef.current.clientWidth,
       height: chartHeightRef.current,
