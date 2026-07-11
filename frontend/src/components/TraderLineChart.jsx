@@ -44,6 +44,7 @@ export default function TraderLineChart({
   const containerRef = useRef(null);
   const chartRef = useRef(null);
   const chartHeightRef = useRef(400);
+  const chartWidthRef = useRef(0);
   const seriesRef = useRef(null);
   const pointsRef = useRef([]);
   const priceLinesRef = useRef({});
@@ -215,14 +216,13 @@ export default function TraderLineChart({
 
     const applySize = () => {
       if (!containerRef.current || !stageRef.current || !chartRef.current) return;
-      const h = Math.max(120, Math.floor(stageRef.current.clientHeight || chartHeightRef.current));
-      const w = Math.floor(containerRef.current.clientWidth);
+      const rect = containerRef.current.getBoundingClientRect();
+      const h = Math.max(80, Math.floor(rect.height));
+      const w = Math.max(80, Math.floor(rect.width));
       if (!w || !h) return;
-      if (h === chartHeightRef.current) {
-        chartRef.current.applyOptions({ width: w });
-        return;
-      }
+      if (h === chartHeightRef.current && w === chartWidthRef.current) return;
       chartHeightRef.current = h;
+      chartWidthRef.current = w;
       chartRef.current.applyOptions({ width: w, height: h });
       if (priceRef.current != null) syncOverlaysRef.current(priceRef.current);
     };
@@ -231,7 +231,9 @@ export default function TraderLineChart({
       requestAnimationFrame(applySize);
     });
     if (stageRef.current) ro.observe(stageRef.current);
+    if (containerRef.current) ro.observe(containerRef.current);
     window.addEventListener('resize', applySize);
+    requestAnimationFrame(applySize);
 
     return () => {
       window.removeEventListener('resize', applySize);
