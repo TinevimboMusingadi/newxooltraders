@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { ChevronDown, X } from 'lucide-react';
 import TraderLineChart from './TraderLineChart';
 import LiveChart from './LiveChart';
@@ -29,22 +29,31 @@ export default function TradeChartPane({
   const [indicators, setIndicators] = useState(DEFAULT_INDICATORS);
   const [drawMode, setDrawMode] = useState('none');
   const [drawings, setDrawings] = useState([]);
-  const [lastPrice, setLastPrice] = useState(null);
+  const priceElRef = useRef(null);
+  const onPriceUpdateRef = useRef(onPriceUpdate);
+  onPriceUpdateRef.current = onPriceUpdate;
 
   const toggleIndicator = useCallback((id) => {
     setIndicators((prev) => ({ ...prev, [id]: !prev[id] }));
   }, []);
 
   const handlePrice = useCallback((q) => {
-    setLastPrice(q);
-    if (isPrimary) onPriceUpdate?.(q);
-  }, [isPrimary, onPriceUpdate]);
+    const el = priceElRef.current;
+    if (el) {
+      const decimals = symbol?.startsWith('frx') ? 4 : 2;
+      el.textContent = q != null ? Number(q).toFixed(decimals) : '—';
+    }
+    if (isPrimary) onPriceUpdateRef.current?.(q);
+  }, [isPrimary, symbol]);
+
+  useEffect(() => {
+    if (priceElRef.current) priceElRef.current.textContent = '—';
+  }, [symbol]);
 
   const symbolLabel = formatSymbolLabel(symbol, meta?.displayName);
-  const priceDecimals = symbol?.startsWith('frx') ? 4 : 2;
   const flag = marketFlag(meta?.category, symbol);
 
-  const assetPicker = useMemo(() => (
+  const assetPicker = (
     <MarketPicker
       symbol={symbol}
       onSelect={(s) => onSymbolChange(pane.id, s)}
@@ -55,13 +64,11 @@ export default function TradeChartPane({
             <strong>{symbolLabel}</strong>
             <ChevronDown size={12} className="trader-asset-chevron" />
           </div>
-          <span className="mono trader-asset-price">
-            {lastPrice != null ? lastPrice.toFixed(priceDecimals) : '—'}
-          </span>
+          <span className="mono trader-asset-price" ref={priceElRef}>—</span>
         </div>
       )}
     />
-  ), [symbol, flag, symbolLabel, lastPrice, priceDecimals, pane.id, onSymbolChange]);
+  );
 
   const chartToolbar = (
     <div className="trader-chart-toolbar">
