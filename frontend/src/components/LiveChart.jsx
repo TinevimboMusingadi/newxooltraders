@@ -42,9 +42,13 @@ export default function LiveChart({
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [ohlc, setOhlc] = useState(null);
   const [currentPrice, setCurrentPrice] = useState(null);
-  const [chartHeight, setChartHeight] = useState(height);
   const [dataVersion, setDataVersion] = useState(0);
+  const onPriceUpdateRef = useRef(onPriceUpdate);
+  const refreshIndicatorsRef = useRef(null);
+  const loadOlderTimerRef = useRef(null);
   const { theme } = useTheme();
+
+  onPriceUpdateRef.current = onPriceUpdate;
 
   const isDark = theme === 'dark';
 
@@ -58,22 +62,24 @@ export default function LiveChart({
     setDrawings,
     dataVersion,
   });
+  refreshIndicatorsRef.current = refreshIndicators;
 
   useEffect(() => {
-    if (!fill || !wrapRef.current) return;
-    const ro = new ResizeObserver((entries) => {
-      const h = entries[0]?.contentRect.height;
-      if (h && h > 100) {
-        setChartHeight(Math.floor(h));
-        chartRef.current?.applyOptions({ height: Math.floor(h) });
-      }
+    if (!fill || !wrapRef.current) return undefined;
+    const ro = new ResizeObserver(() => {
+      requestAnimationFrame(() => {
+        if (!wrapRef.current || !chartRef.current || !containerRef.current) return;
+        const h = Math.floor(wrapRef.current.clientHeight);
+        const w = Math.floor(containerRef.current.clientWidth);
+        if (h > 100) chartRef.current.applyOptions({ height: h, width: w });
+      });
     });
     ro.observe(wrapRef.current);
     return () => ro.disconnect();
   }, [fill]);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current) return undefined;
 
     const chart = createChart(containerRef.current, {
       layout: {
@@ -98,7 +104,7 @@ export default function LiveChart({
         tickMarkFormatter: formatChartTickMark,
       },
       width: containerRef.current.clientWidth,
-      height: fill ? (wrapRef.current?.clientHeight || height) : chartHeight,
+      height: fill ? (wrapRef.current?.clientHeight || height) : height,
     });
 
     const series = chart.addSeries(CandlestickSeries, {
@@ -130,19 +136,20 @@ export default function LiveChart({
     });
 
     const handleResize = () => {
-      if (containerRef.current) {
-        const h = fill && wrapRef.current ? wrapRef.current.clientHeight : chartHeight;
-        chart.applyOptions({ width: containerRef.current.clientWidth, height: h || chartHeight });
-      }
+      if (!containerRef.current || !chartRef.current) return;
+      const h = fill && wrapRef.current ? wrapRef.current.clientHeight : height;
+      chart.applyOptions({ width: containerRef.current.clientWidth, height: h || height });
     };
     window.addEventListener('resize', handleResize);
 
     return () => {
       window.removeEventListener('resize', handleResize);
       chart.remove();
+      chartRef.current = null;
+      seriesRef.current = null;
       priceLineRef.current = null;
     };
-  }, [isDark, chartHeight, fill]);
+  }, [isDark, fill, height]);
 
   useEffect(() => {
     if (!isValidSymbol(symbol) || !seriesRef.current || !chartRef.current) {
@@ -209,10 +216,10 @@ export default function LiveChart({
     const onVisibleRange = (range) => {
       if (!range) return;
       const bars = candlesRef.current.length;
-      // User left the live edge if the right side isn't near the last bar
       followLiveRef.current = range.to >= bars - 3;
       if (shouldLoadOlderHistory(range, bars)) {
-        requestOlder();
+        clearTimeout(loadOlderTimerRef.current);
+        loadOlderTimerRef.current = setTimeout(requestOlder, 120);
       }
     };
 
@@ -293,7 +300,7 @@ export default function LiveChart({
         const quote = Number(data.tick.quote);
         setCurrentPrice(quote);
         updatePriceLine(quote);
-        onPriceUpdate?.(quote);
+        onPriceUpdateRef.current?.(quote);
 
         const epoch = data.tick.epoch;
         const bucket = Math.floor(epoch / gran) * gran;
@@ -320,7 +327,7 @@ export default function LiveChart({
         if (followLiveRef.current) {
           chartRef.current?.timeScale().scrollToRealTime();
         }
-        if (candlesRef.current.length % 3 === 0) refreshIndicators();
+        if (candlesRef.current.length % 15 === 0) refreshIndicatorsRef.current?.();
       }
 
       if (data.msg_type === 'ohlc' && data.ohlc) {
@@ -336,7 +343,7 @@ export default function LiveChart({
         seriesRef.current.update(candle);
         setCurrentPrice(Number(c.close));
         updatePriceLine(Number(c.close));
-        onPriceUpdate?.(Number(c.close));
+        onPriceUpdateRef.current?.(Number(c.close));
       }
     };
 
@@ -354,6 +361,7 @@ export default function LiveChart({
 
     return () => {
       clearInterval(ping);
+      clearTimeout(loadOlderTimerRef.current);
       try {
         chartRef.current?.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRange);
       } catch {
@@ -364,7 +372,7 @@ export default function LiveChart({
       }
       ws.close();
     };
-  }, [symbol, granularity, onPriceUpdate, refreshIndicators]);
+  }, [symbol, granularity]);
 
   const displayOhlc = ohlc || (lastCandleRef.current
     ? {
