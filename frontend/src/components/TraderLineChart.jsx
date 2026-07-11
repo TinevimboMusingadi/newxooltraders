@@ -45,7 +45,6 @@ export default function TraderLineChart({
   const chartRef = useRef(null);
   const chartHeightRef = useRef(400);
   const seriesRef = useRef(null);
-  const wsRef = useRef(null);
   const pointsRef = useRef([]);
   const priceLinesRef = useRef({});
   const priceRef = useRef(null);
@@ -57,10 +56,17 @@ export default function TraderLineChart({
   const loadingOlderRef = useRef(false);
   const noMoreHistoryRef = useRef(false);
   const followLiveRef = useRef(true);
+  const growthRateRef = useRef(growthRate);
+  const showBandRef = useRef(showAccumulatorBand);
+  const onPriceUpdateRef = useRef(onPriceUpdate);
+  const loadOlderTimerRef = useRef(null);
+
+  growthRateRef.current = growthRate;
+  showBandRef.current = showAccumulatorBand;
+  onPriceUpdateRef.current = onPriceUpdate;
 
   const [loading, setLoading] = useState(true);
   const [loadingOlder, setLoadingOlder] = useState(false);
-  const [currentPrice, setCurrentPrice] = useState(null);
   const [dataVersion, setDataVersion] = useState(0);
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -75,15 +81,8 @@ export default function TraderLineChart({
     setDrawings,
     dataVersion,
   });
-
-  const updatePriceLine = useCallback((series, key, price, options) => {
-    const lines = priceLinesRef.current;
-    if (lines[key]) {
-      lines[key].applyOptions({ price, ...options });
-    } else {
-      lines[key] = series.createPriceLine({ price, ...options });
-    }
-  }, []);
+  const refreshIndicatorsRef = useRef(refreshIndicators);
+  refreshIndicatorsRef.current = refreshIndicators;
 
   const removePriceLine = useCallback((series, key) => {
     const lines = priceLinesRef.current;
@@ -93,10 +92,6 @@ export default function TraderLineChart({
     }
   }, []);
 
-  const clearAllPriceLines = useCallback((series) => {
-    Object.keys(priceLinesRef.current).forEach((key) => removePriceLine(series, key));
-  }, [removePriceLine]);
-
   const syncOverlays = useCallback((price) => {
     const chart = chartRef.current;
     const series = seriesRef.current;
@@ -104,6 +99,8 @@ export default function TraderLineChart({
 
     const coord = series.priceToCoordinate(price);
     if (coord == null) return;
+    const growth = growthRateRef.current;
+    const showBand = showBandRef.current;
 
     if (cursorDotRef.current) {
       const timeScale = chart.timeScale();
@@ -116,21 +113,24 @@ export default function TraderLineChart({
       }
     }
 
-    if (showAccumulatorBand && growthRate) {
-      const offset = bandOffset(price, growthRate);
+    const lines = priceLinesRef.current;
+    const upsert = (key, p, options) => {
+      if (lines[key]) lines[key].applyOptions({ price: p, ...options });
+      else lines[key] = series.createPriceLine({ price: p, ...options });
+    };
+
+    if (showBand && growth) {
+      const offset = bandOffset(price, growth);
       const upper = price + offset;
       const lower = price - offset;
       const yUpper = series.priceToCoordinate(upper);
       const yLower = series.priceToCoordinate(lower);
 
       if (bandRef.current && yUpper != null && yLower != null) {
-        const top = Math.min(yUpper, yLower);
-        const h = Math.abs(yLower - yUpper);
         bandRef.current.style.display = 'block';
-        bandRef.current.style.top = `${top}px`;
-        bandRef.current.style.height = `${h}px`;
+        bandRef.current.style.top = `${Math.min(yUpper, yLower)}px`;
+        bandRef.current.style.height = `${Math.abs(yLower - yUpper)}px`;
       }
-
       if (labelTopRef.current) {
         labelTopRef.current.style.display = 'block';
         labelTopRef.current.textContent = `+${offset.toFixed(3)}`;
@@ -141,19 +141,8 @@ export default function TraderLineChart({
         labelBottomRef.current.textContent = `-${offset.toFixed(3)}`;
         if (yLower != null) labelBottomRef.current.style.top = `${yLower - 10}px`;
       }
-
-      updatePriceLine(series, 'upper', upper, {
-        color: '#38bdf8',
-        lineWidth: 1,
-        lineStyle: LineStyle.Solid,
-        axisLabelVisible: false,
-      });
-      updatePriceLine(series, 'lower', lower, {
-        color: '#38bdf8',
-        lineWidth: 1,
-        lineStyle: LineStyle.Solid,
-        axisLabelVisible: false,
-      });
+      upsert('upper', upper, { color: '#38bdf8', lineWidth: 1, lineStyle: LineStyle.Solid, axisLabelVisible: false });
+      upsert('lower', lower, { color: '#38bdf8', lineWidth: 1, lineStyle: LineStyle.Solid, axisLabelVisible: false });
     } else {
       removePriceLine(series, 'upper');
       removePriceLine(series, 'lower');
@@ -162,7 +151,7 @@ export default function TraderLineChart({
       if (labelBottomRef.current) labelBottomRef.current.style.display = 'none';
     }
 
-    updatePriceLine(series, 'cursor', price, {
+    upsert('cursor', price, {
       color: '#2563eb',
       lineWidth: 1,
       lineStyle: LineStyle.Dashed,
@@ -171,25 +160,12 @@ export default function TraderLineChart({
       axisLabelColor: '#111827',
       axisLabelTextColor: '#ffffff',
     });
-  }, [growthRate, showAccumulatorBand, updatePriceLine, removePriceLine]);
+  }, [removePriceLine]);
 
-  useEffect(() => {
-    if (!stageRef.current) return;
+  const syncOverlaysRef = useRef(syncOverlays);
+  syncOverlaysRef.current = syncOverlays;
 
-    const ro = new ResizeObserver((entries) => {
-      const h = entries[0]?.contentRect.height;
-      if (h && h > 100) {
-        chartHeightRef.current = Math.floor(h);
-        if (chartRef.current) {
-          chartRef.current.applyOptions({ height: chartHeightRef.current });
-          if (priceRef.current != null) syncOverlays(priceRef.current);
-        }
-      }
-    });
-    ro.observe(stageRef.current);
-    return () => ro.disconnect();
-  }, [syncOverlays]);
-
+  // Create chart once per theme — never recreate on overlay/callback identity changes
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -201,9 +177,7 @@ export default function TraderLineChart({
         background: { color: 'transparent' },
         textColor: isDark ? '#94a3b8' : '#64748b',
       },
-      localization: {
-        timeFormatter: formatChartCrosshairTime,
-      },
+      localization: { timeFormatter: formatChartCrosshairTime },
       grid: {
         vertLines: { color: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)' },
         horzLines: { color: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)' },
@@ -233,208 +207,244 @@ export default function TraderLineChart({
       lineWidth: 2,
       lastValueVisible: false,
       priceLineVisible: false,
-      lastPriceAnimation: LastPriceAnimationMode.Continuous,
+      lastPriceAnimation: LastPriceAnimationMode.Disabled,
     });
 
     chartRef.current = chart;
     seriesRef.current = series;
 
-    const handleResize = () => {
-      if (containerRef.current && stageRef.current) {
-        const h = stageRef.current.clientHeight || chartHeightRef.current;
-        chartHeightRef.current = h;
-        chart.applyOptions({
-          width: containerRef.current.clientWidth,
-          height: h,
-        });
-        if (priceRef.current != null) syncOverlays(priceRef.current);
+    const applySize = () => {
+      if (!containerRef.current || !stageRef.current || !chartRef.current) return;
+      const h = Math.max(120, Math.floor(stageRef.current.clientHeight || chartHeightRef.current));
+      const w = Math.floor(containerRef.current.clientWidth);
+      if (!w || !h) return;
+      if (h === chartHeightRef.current) {
+        chartRef.current.applyOptions({ width: w });
+        return;
       }
+      chartHeightRef.current = h;
+      chartRef.current.applyOptions({ width: w, height: h });
+      if (priceRef.current != null) syncOverlaysRef.current(priceRef.current);
     };
-    window.addEventListener('resize', handleResize);
+
+    const ro = new ResizeObserver(() => {
+      requestAnimationFrame(applySize);
+    });
+    if (stageRef.current) ro.observe(stageRef.current);
+    window.addEventListener('resize', applySize);
 
     return () => {
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', applySize);
+      ro.disconnect();
       chart.remove();
+      chartRef.current = null;
+      seriesRef.current = null;
       priceLinesRef.current = {};
     };
-  }, [isDark, syncOverlays]);
+  }, [isDark]);
 
+  // Data stream — only reconnect when symbol changes
   useEffect(() => {
-    if (!isValidSymbol(symbol) || !seriesRef.current || !chartRef.current) {
+    if (!isValidSymbol(symbol)) {
       setLoading(false);
-      return;
+      return undefined;
     }
 
-    setLoading(true);
-    setCurrentPrice(null);
-    priceRef.current = null;
-    pointsRef.current = [];
-    loadingOlderRef.current = false;
-    noMoreHistoryRef.current = false;
-    followLiveRef.current = true;
-    seriesRef.current.setData([]);
-    clearAllPriceLines(seriesRef.current);
+    let cancelled = false;
+    let ws;
+    let ping;
 
-    const ws = new WebSocket(PUBLIC_WS);
-    wsRef.current = ws;
-    reqIdRef.current = 1;
+    const start = () => {
+      if (!seriesRef.current || !chartRef.current) {
+        // Chart not ready yet — retry shortly
+        const t = setTimeout(start, 50);
+        return () => clearTimeout(t);
+      }
 
-    const requestOlder = () => {
-      if (loadingOlderRef.current || noMoreHistoryRef.current) return;
-      if (ws.readyState !== WebSocket.OPEN) return;
-      const earliest = pointsRef.current[0]?.time;
-      const payload = buildOlderHistoryRequest({
-        symbol,
-        earliestTime: earliest,
-        style: 'ticks',
-        count: HISTORY_PAGE,
-        reqId: reqIdRef.current++,
+      setLoading(true);
+      priceRef.current = null;
+      pointsRef.current = [];
+      loadingOlderRef.current = false;
+      noMoreHistoryRef.current = false;
+      followLiveRef.current = true;
+      seriesRef.current.setData([]);
+      Object.keys(priceLinesRef.current).forEach((key) => {
+        try { seriesRef.current.removePriceLine(priceLinesRef.current[key]); } catch { /* ignore */ }
+        delete priceLinesRef.current[key];
       });
-      if (!payload) return;
-      loadingOlderRef.current = true;
-      setLoadingOlder(true);
-      ws.send(JSON.stringify(payload));
-    };
 
-    const onVisibleRange = (range) => {
-      if (!range) return;
-      const bars = pointsRef.current.length;
-      followLiveRef.current = range.to >= bars - 5;
-      if (shouldLoadOlderHistory(range, bars, 15)) {
-        requestOlder();
-      }
-      if (priceRef.current != null) syncOverlays(priceRef.current);
-    };
+      ws = new WebSocket(PUBLIC_WS);
+      reqIdRef.current = 1;
 
-    chartRef.current.timeScale().subscribeVisibleLogicalRangeChange(onVisibleRange);
+      const requestOlder = () => {
+        if (loadingOlderRef.current || noMoreHistoryRef.current) return;
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        const earliest = pointsRef.current[0]?.time;
+        const payload = buildOlderHistoryRequest({
+          symbol,
+          earliestTime: earliest,
+          style: 'ticks',
+          count: HISTORY_PAGE,
+          reqId: reqIdRef.current++,
+        });
+        if (!payload) return;
+        loadingOlderRef.current = true;
+        setLoadingOlder(true);
+        ws.send(JSON.stringify(payload));
+      };
 
-    const pushPoint = (epoch, quote) => {
-      const points = pointsRef.current;
-      const point = { time: epoch, value: quote };
-      const last = points[points.length - 1];
-      if (last && last.time === epoch) {
-        points[points.length - 1] = point;
-        seriesRef.current.update(point);
-      } else {
-        points.push(point);
-        pointsRef.current = capHistory(points, MAX_TICK_POINTS);
-        if (pointsRef.current.length === 1) {
-          seriesRef.current.setData(pointsRef.current);
-        } else {
-          seriesRef.current.update(point);
+      const onVisibleRange = (range) => {
+        if (!range || cancelled) return;
+        const bars = pointsRef.current.length;
+        followLiveRef.current = range.to >= bars - 5;
+        if (shouldLoadOlderHistory(range, bars, 15)) {
+          clearTimeout(loadOlderTimerRef.current);
+          loadOlderTimerRef.current = setTimeout(requestOlder, 120);
         }
-      }
-      priceRef.current = quote;
-      setCurrentPrice(quote);
-      onPriceUpdate?.(quote);
-      syncOverlays(quote);
-      if (followLiveRef.current) {
-        chartRef.current?.timeScale().scrollToRealTime();
-      }
-      if (pointsRef.current.length % 5 === 0) {
-        setDataVersion((v) => v + 1);
-        refreshIndicators();
-      }
-    };
+      };
 
-    ws.onopen = () => {
-      ws.send(JSON.stringify({
-        ticks_history: symbol,
-        adjust_start_time: 1,
-        count: INITIAL_TICKS,
-        end: 'latest',
-        style: 'ticks',
-        req_id: reqIdRef.current++,
-      }));
-      ws.send(JSON.stringify({ ticks: symbol, subscribe: 1, req_id: reqIdRef.current++ }));
-    };
+      chartRef.current.timeScale().subscribeVisibleLogicalRangeChange(onVisibleRange);
 
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.msg_type === 'history' && data.history?.prices?.length) {
-        const times = data.history.times || [];
-        const prices = data.history.prices;
-        const seeded = times.map((t, i) => ({ time: t, value: Number(prices[i]) }));
+      const pushPoint = (epoch, quote) => {
+        if (cancelled || !seriesRef.current) return;
+        const points = pointsRef.current;
+        const point = { time: epoch, value: quote };
+        const last = points[points.length - 1];
+        if (last && last.time === epoch) {
+          points[points.length - 1] = point;
+          seriesRef.current.update(point);
+        } else if (last && epoch < last.time) {
+          return; // ignore out-of-order ticks
+        } else {
+          points.push(point);
+          pointsRef.current = capHistory(points, MAX_TICK_POINTS);
+          if (pointsRef.current.length === 1) seriesRef.current.setData(pointsRef.current);
+          else seriesRef.current.update(point);
+        }
+        priceRef.current = quote;
+        onPriceUpdateRef.current?.(quote);
+        syncOverlaysRef.current(quote);
+        if (followLiveRef.current) {
+          chartRef.current?.timeScale().scrollToRealTime();
+        }
+        if (pointsRef.current.length % 20 === 0) {
+          setDataVersion((v) => v + 1);
+          refreshIndicatorsRef.current?.();
+        }
+      };
 
-        const isOlderPage = loadingOlderRef.current
-          && pointsRef.current.length
-          && seeded[seeded.length - 1].time < pointsRef.current[0].time;
+      ws.onopen = () => {
+        if (cancelled) return;
+        ws.send(JSON.stringify({
+          ticks_history: symbol,
+          adjust_start_time: 1,
+          count: INITIAL_TICKS,
+          end: 'latest',
+          style: 'ticks',
+          req_id: reqIdRef.current++,
+        }));
+        ws.send(JSON.stringify({ ticks: symbol, subscribe: 1, req_id: reqIdRef.current++ }));
+      };
 
-        if (isOlderPage) {
-          const timeScale = chartRef.current?.timeScale();
-          const prevRange = timeScale?.getVisibleLogicalRange();
-          const beforeLen = pointsRef.current.length;
-          const merged = capHistory(prependHistory(pointsRef.current, seeded), MAX_TICK_POINTS);
-          const added = merged.length - beforeLen;
-          pointsRef.current = merged;
-          seriesRef.current.setData(merged);
-          if (prevRange && added > 0) {
-            timeScale.setVisibleLogicalRange({
-              from: prevRange.from + added,
-              to: prevRange.to + added,
-            });
+      ws.onmessage = (event) => {
+        if (cancelled) return;
+        const data = JSON.parse(event.data);
+        if (data.msg_type === 'history' && data.history?.prices?.length) {
+          const times = data.history.times || [];
+          const prices = data.history.prices;
+          const seeded = times.map((t, i) => ({ time: Number(t), value: Number(prices[i]) }));
+
+          const isOlderPage = loadingOlderRef.current
+            && pointsRef.current.length
+            && seeded[seeded.length - 1].time < pointsRef.current[0].time;
+
+          if (isOlderPage) {
+            const timeScale = chartRef.current?.timeScale();
+            const prevRange = timeScale?.getVisibleLogicalRange();
+            const beforeLen = pointsRef.current.length;
+            const merged = capHistory(prependHistory(pointsRef.current, seeded), MAX_TICK_POINTS);
+            const added = merged.length - beforeLen;
+            pointsRef.current = merged;
+            seriesRef.current.setData(merged);
+            if (prevRange && added > 0) {
+              timeScale.setVisibleLogicalRange({
+                from: prevRange.from + added,
+                to: prevRange.to + added,
+              });
+            }
+            if (seeded.length < HISTORY_PAGE / 2) noMoreHistoryRef.current = true;
+            loadingOlderRef.current = false;
+            setLoadingOlder(false);
+            setDataVersion((v) => v + 1);
+            return;
           }
-          if (seeded.length < HISTORY_PAGE / 2) noMoreHistoryRef.current = true;
+
+          pointsRef.current = seeded;
+          seriesRef.current.setData(pointsRef.current);
+          const last = Number(prices[prices.length - 1]);
+          priceRef.current = last;
+          onPriceUpdateRef.current?.(last);
+          syncOverlaysRef.current(last);
+          setLoading(false);
           loadingOlderRef.current = false;
           setLoadingOlder(false);
           setDataVersion((v) => v + 1);
-          return;
         }
 
-        pointsRef.current = seeded;
-        seriesRef.current.setData(pointsRef.current);
-        const last = Number(prices[prices.length - 1]);
-        priceRef.current = last;
-        setCurrentPrice(last);
-        onPriceUpdate?.(last);
-        syncOverlays(last);
-        setLoading(false);
+        if (data.msg_type === 'history' && (!data.history?.prices?.length) && loadingOlderRef.current) {
+          noMoreHistoryRef.current = true;
+          loadingOlderRef.current = false;
+          setLoadingOlder(false);
+        }
+
+        if (data.msg_type === 'tick' && data.tick) {
+          pushPoint(data.tick.epoch, Number(data.tick.quote));
+          setLoading(false);
+        }
+      };
+
+      ws.onerror = () => {
+        if (!cancelled) setLoading(false);
         loadingOlderRef.current = false;
         setLoadingOlder(false);
-        setDataVersion((v) => v + 1);
-      }
+      };
 
-      if (data.msg_type === 'history' && (!data.history?.prices?.length) && loadingOlderRef.current) {
-        noMoreHistoryRef.current = true;
-        loadingOlderRef.current = false;
-        setLoadingOlder(false);
-      }
+      ping = setInterval(() => {
+        if (ws?.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ ping: 1, req_id: reqIdRef.current++ }));
+        }
+      }, 45000);
 
-      if (data.msg_type === 'tick' && data.tick) {
-        pushPoint(data.tick.epoch, Number(data.tick.quote));
-        setLoading(false);
-      }
+      return () => {
+        clearTimeout(loadOlderTimerRef.current);
+        clearInterval(ping);
+        try {
+          chartRef.current?.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRange);
+        } catch { /* ignore */ }
+        if (ws?.readyState === WebSocket.OPEN) {
+          try { ws.send(JSON.stringify({ forget_all: 'ticks' })); } catch { /* ignore */ }
+        }
+        ws?.close();
+      };
     };
 
-    ws.onerror = () => {
-      setLoading(false);
-      loadingOlderRef.current = false;
-      setLoadingOlder(false);
-    };
-
-    const ping = setInterval(() => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ ping: 1, req_id: reqIdRef.current++ }));
-      }
-    }, 45000);
+    const cleanupRetry = start();
 
     return () => {
+      cancelled = true;
+      if (typeof cleanupRetry === 'function') cleanupRetry();
+      clearTimeout(loadOlderTimerRef.current);
       clearInterval(ping);
-      try {
-        chartRef.current?.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRange);
-      } catch {
-        /* ignore */
+      if (ws?.readyState === WebSocket.OPEN) {
+        try { ws.send(JSON.stringify({ forget_all: 'ticks' })); } catch { /* ignore */ }
       }
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ forget_all: 'ticks' }));
-      }
-      ws.close();
+      ws?.close();
     };
-  }, [symbol, onPriceUpdate, syncOverlays, clearAllPriceLines, refreshIndicators]);
+  }, [symbol]);
 
   useEffect(() => {
-    if (currentPrice != null) syncOverlays(currentPrice);
-  }, [growthRate, showAccumulatorBand, currentPrice, syncOverlays]);
+    if (priceRef.current != null) syncOverlays(priceRef.current);
+  }, [growthRate, showAccumulatorBand, syncOverlays]);
 
   const chartReady = isValidSymbol(symbol);
 
