@@ -68,13 +68,15 @@ export default function LiveChart({
     if (!fill || !wrapRef.current) return undefined;
     const ro = new ResizeObserver(() => {
       requestAnimationFrame(() => {
-        if (!wrapRef.current || !chartRef.current || !containerRef.current) return;
-        const h = Math.floor(wrapRef.current.clientHeight);
-        const w = Math.floor(containerRef.current.clientWidth);
-        if (h > 100) chartRef.current.applyOptions({ height: h, width: w });
+        if (!containerRef.current || !chartRef.current) return;
+        const rect = containerRef.current.getBoundingClientRect();
+        const h = Math.max(80, Math.floor(rect.height || wrapRef.current?.clientHeight || 0));
+        const w = Math.max(80, Math.floor(rect.width));
+        if (h > 80 && w > 80) chartRef.current.applyOptions({ height: h, width: w });
       });
     });
-    ro.observe(wrapRef.current);
+    if (wrapRef.current) ro.observe(wrapRef.current);
+    if (containerRef.current) ro.observe(containerRef.current);
     return () => ro.disconnect();
   }, [fill]);
 
