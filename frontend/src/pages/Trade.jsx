@@ -97,6 +97,23 @@ export default function Trade() {
     setPanes((prev) => prev.slice(0, layout.max));
   }, [layout.max]);
 
+  // Phones: force single-pane layout (multi-chart chrome is hidden)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 900px)');
+    const apply = () => {
+      if (!mq.matches) return;
+      setLayoutId('1');
+      setChartExpanded(false);
+      setPanes((prev) => {
+        const primary = prev[0] || { id: 'main', symbol };
+        return [{ ...primary, id: primary.id || 'main' }];
+      });
+    };
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, [symbol]);
+
   useEffect(() => {
     if (!connected || !openContracts?.length) return;
     for (const c of openContracts) {
