@@ -313,6 +313,7 @@ export default function Trade() {
         </div>
       )}
 
+      <div className="trade-page-root">
       <div className={`trade-layout trade-page ${chartExpanded ? 'trade-chart-expanded' : ''}`}>
         <div className="trade-chart-section trader-chart-section">
           <div className="trade-chart-chrome">
@@ -435,6 +436,7 @@ export default function Trade() {
         closingAll={closingAll}
         currency={balance?.currency || 'USD'}
       />
+      </div>
 
       <RealTradeConfirmModal
         open={showRealConfirm}
