@@ -2434,6 +2434,74 @@ button {
   overflow-y: auto;
 }
 
+.positions-mobile {
+  display: none;
+}
+
+.positions-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.position-card {
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+[data-theme='light'] .position-card {
+  background: rgba(107, 51, 238, 0.04);
+}
+
+.position-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.position-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.position-card-meta .position-symbol {
+  font-size: 0.85rem;
+}
+
+.position-card-meta .position-type {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.position-card-pl {
+  font-size: 0.9rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.position-card-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.75rem;
+  margin-bottom: 8px;
+}
+
+.position-card-actions .position-actions-inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .positions-table {
   width: 100%;
   border-collapse: collapse;
@@ -3447,6 +3515,12 @@ button {
   max-width: none;
 }
 
+.trade-page-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .chart-empty-state {
   position: absolute;
   inset: 0;
@@ -3962,27 +4036,75 @@ button {
     padding: 4px 6px 8px;
   }
 
-  /* Trade — stack chart then panel; unlock desktop fixed height */
-  .trade-page .trade-layout,
-  .trade-page.trade-layout {
+  /* Trade — stack chart → positions → panel; unlock fixed height */
+  .app-shell--trade .app-ticker {
+    display: none;
+  }
+
+  .trade-page-root {
     display: flex;
     flex-direction: column;
-    grid-template-columns: 1fr;
-    height: auto !important;
-    min-height: 0 !important;
-    max-height: none;
     gap: 8px;
-    overflow: visible;
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .trade-page-root .trade-layout.trade-page,
+  .trade-page-root .trade-page.trade-layout {
+    display: contents;
   }
 
   .trade-page .trade-chart-section,
-  .trade-page .trader-chart-section {
-    order: -1;
+  .trade-page .trader-chart-section,
+  .trade-page-root .trade-chart-section,
+  .trade-page-root .trader-chart-section {
+    order: 1;
     flex: 0 0 auto;
-    height: min(42vh, 320px);
-    min-height: 220px;
-    max-height: min(42vh, 320px);
+    height: min(32vh, 260px);
+    min-height: 180px;
+    max-height: min(32vh, 260px);
     overflow: hidden;
+    border-radius: var(--radius-sm);
+  }
+
+  .trade-page-root:has(.open-positions.has-positions.is-open) .trade-chart-section,
+  .trade-page-root:has(.open-positions.has-positions.is-open) .trader-chart-section {
+    height: min(26vh, 200px);
+    min-height: 150px;
+    max-height: min(26vh, 200px);
+  }
+
+  .trade-page-root .open-positions {
+    order: 2;
+    margin: 0;
+    max-height: none;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+  }
+
+  .trade-page-root .open-positions.is-open.has-positions {
+    max-height: 200px;
+  }
+
+  .trade-page-root .open-positions .collapsible-panel-body {
+    max-height: 160px;
+    overflow-y: auto;
+  }
+
+  .positions-desktop {
+    display: none;
+  }
+
+  .positions-mobile {
+    display: flex;
+  }
+
+  .trade-page-root .last-trade-panel {
+    order: 3;
+    margin: 0;
+  }
+
+  .trade-page-root .trade-panel-column {
+    order: 4;
   }
 
   .trade-multi-chart-grid {
@@ -4002,13 +4124,10 @@ button {
 
   .trade-chart-pane .trader-chart-stage,
   .trade-chart-pane .chart-container {
-    min-height: 160px;
+    min-height: 120px;
   }
 
-  .trader-chart-stage {
-    min-height: 0;
-  }
-
+  .trader-chart-stage,
   .trader-live-chart {
     min-height: 0;
   }
@@ -4027,11 +4146,14 @@ button {
     width: 100%;
     overflow: visible;
     flex-shrink: 0;
+    padding-bottom: 0;
   }
 
   .trade-panel-column .trade-panel-compact {
     height: auto;
     overflow: visible;
+    padding: 10px 12px 16px;
+    border-radius: var(--radius-sm);
   }
 
   /* Multi-chart chrome: keep Live badge only */
@@ -4045,30 +4167,35 @@ button {
     justify-content: flex-end;
   }
 
-  /* Overlays: asset chip + one scrollable tool row (no wrap pile) */
+  /* Overlays: compact chip + scroll tools */
   .trader-chart-overlays,
   .trade-candle-overlays {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
     flex-wrap: nowrap;
     gap: 4px;
     padding: 6px 8px;
   }
 
   .trader-asset-picker {
-    max-width: min(100%, 200px);
+    max-width: min(48%, 160px);
     min-width: 0;
-    padding: 6px 10px;
+    padding: 4px 8px;
+  }
+
+  .trader-asset-picker .trader-asset-price {
+    font-size: 0.75rem;
   }
 
   .trader-chart-toolbar {
     flex-wrap: nowrap;
     margin-left: 0;
-    max-width: 100%;
+    max-width: 52%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    gap: 6px;
+    gap: 4px;
   }
 
   .trader-chart-toolbar::-webkit-scrollbar {
@@ -4095,7 +4222,7 @@ button {
     font-size: 0.65rem;
   }
 
-  /* Mode pills: horizontal scroll instead of tall wrap */
+  /* Mode pills: horizontal scroll */
   .trade-panel-compact .trade-mode-toggle,
   .trade-panel-compact .trade-view-toggle,
   .trade-mode-toggle,
@@ -4117,17 +4244,23 @@ button {
     flex-shrink: 0;
   }
 
-  /* Keep Rise/Fall clear of bottom nav + footer */
-  .trade-panel-column {
-    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  /* Sticky Rise/Fall above bottom nav */
+  .trade-panel-compact .trade-actions,
+  .trade-panel-compact .trade-actions-grid {
+    position: sticky;
+    bottom: calc(108px + env(safe-area-inset-bottom, 0px));
+    z-index: 30;
+    margin-top: 12px;
+    padding: 8px 0 4px;
+    background: linear-gradient(180deg, transparent, var(--workspace-surface) 28%);
   }
 
   .app-main--trade {
-    padding-bottom: calc(128px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
   }
 
   .open-positions {
-    margin-bottom: 8px;
+    margin-bottom: 0;
   }
 
   /* Markets */
