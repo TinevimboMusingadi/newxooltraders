@@ -1,25 +1,27 @@
 import { NavLink, Outlet, Navigate, useLocation } from 'react-router-dom';
 import {
   Bot,
+  Clock,
   LayoutDashboard,
   LineChart,
   Radar,
-  Zap,
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import AppSidebar from '../components/AppSidebar';
 import LiveTicker from '../components/LiveTicker';
 import TradingFooter from '../components/TradingFooter';
 import TradeSummaryPanel from '../components/TradeSummaryPanel';
+import BotLiveChip from '../components/BotLiveChip';
 import { TradingWsProvider } from '../context/TradingWsContext';
 import { TradeSessionProvider } from '../context/TradeSessionContext';
 import { TradingFooterProvider } from '../context/TradingFooterContext';
+import { BotDeskProvider } from '../context/BotDeskContext';
 import { useAuth } from '../hooks/useAuth';
 
 const MOBILE_NAV = [
   { to: '/dashboard', label: 'Home', icon: LayoutDashboard },
   { to: '/trade', label: 'Trade', icon: LineChart },
-  { to: '/bulk', label: 'Bulk', icon: Zap },
+  { to: '/history', label: 'History', icon: Clock },
   { to: '/scanner', label: 'Analysis', icon: Radar },
   { to: '/bots', label: 'Hub', icon: Bot },
 ];
@@ -49,6 +51,7 @@ function AppShellContent() {
         </div>
       </div>
       <TradingFooter />
+      <BotLiveChip />
       <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
         {MOBILE_NAV.map(({ to, label, icon: Icon }) => (
           <NavLink key={to} to={to} className={({ isActive }) => `mobile-nav-link ${isActive ? 'active' : ''}`}>
@@ -66,7 +69,9 @@ export default function AppShell() {
     <TradeSessionProvider>
       <TradingFooterProvider>
         <TradingWsProvider>
-          <AppShellContent />
+          <BotDeskProvider>
+            <AppShellContent />
+          </BotDeskProvider>
         </TradingWsProvider>
       </TradingFooterProvider>
     </TradeSessionProvider>
