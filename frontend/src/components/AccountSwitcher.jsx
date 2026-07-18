@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, LogOut, RefreshCw } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useTradingWs } from '../context/TradingWsContext';
 import { api } from '../lib/api';
 import { getAccountDisplayId, getAccountMode, isDemoAccount } from '../lib/accountDisplay';
 import { currencyFlag, formatBalance } from '../lib/currencyFlags';
 
 export default function AccountSwitcher() {
   const { user, refresh, logout } = useAuth();
+  const { balance: liveBalance, connected } = useTradingWs();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState('demo');
   const [busy, setBusy] = useState(false);
@@ -16,6 +18,12 @@ export default function AccountSwitcher() {
   const selectedId = user?.selectedAccountId;
   const selected = accounts.find((a) => a.accountId === selectedId);
   const mode = getAccountMode(selected, selectedId);
+
+  // Prefer live Deriv WS balance while trading/bot runs — header shows money left
+  const liveAmount = liveBalance?.balance ?? liveBalance?.amount;
+  const liveCurrency = liveBalance?.currency;
+  const headerBalance = liveAmount != null ? Number(liveAmount) : selected?.balance;
+  const headerCurrency = liveCurrency || selected?.currency || 'USD';
 
   const realAccounts = accounts.filter((a) => !isDemoAccount(a));
   const demoAccounts = accounts.filter((a) => isDemoAccount(a));
@@ -55,15 +63,15 @@ export default function AccountSwitcher() {
     }
   };
 
-  const bal = selected?.balance;
-  const currency = selected?.currency || 'USD';
-  const flag = currencyFlag(currency);
+  const flag = currencyFlag(headerCurrency);
 
   return (
     <div className="account-switcher" ref={ref}>
-      <button type="button" className="account-switcher-trigger" onClick={() => setOpen(!open)}>
+      <button type="button" className="account-switcher-trigger" onClick={() => setOpen(!open)} title={connected ? 'Live balance' : 'Account balance'}>
         <span className="account-currency-flag" aria-hidden>{flag}</span>
-        <span className="account-balance mono">{formatBalance(bal, currency)}</span>
+        <span className={`account-balance mono ${liveAmount != null ? 'is-live' : ''}`}>
+          {formatBalance(headerBalance, headerCurrency)}
+        </span>
         <ChevronDown size={14} className={open ? 'chevron-up' : ''} />
       </button>
 
