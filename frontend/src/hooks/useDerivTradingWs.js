@@ -49,7 +49,8 @@ export function useDerivTradingWs(accountId, { onContractUpdate } = {}) {
         ws.onopen = () => {
           setConnected(true);
           setError(null);
-          ws.send(JSON.stringify({ balance: 1, req_id: reqIdRef.current++ }));
+          // Live balance stream so header updates while bots/trades run
+          ws.send(JSON.stringify({ balance: 1, subscribe: 1, req_id: reqIdRef.current++ }));
           ws.send(JSON.stringify({ portfolio: 1, req_id: reqIdRef.current++ }));
           pingTimer = setInterval(() => {
             if (ws.readyState === WebSocket.OPEN) {
@@ -92,6 +93,10 @@ export function useDerivTradingWs(accountId, { onContractUpdate } = {}) {
               const filtered = prev.filter((c) => c.contract_id !== id);
               if (poc?.is_sold || poc?.is_expired) {
                 onContractUpdateRef.current?.(poc);
+                // Payout landed — push fresh balance to header
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(JSON.stringify({ balance: 1, req_id: reqIdRef.current++ }));
+                }
                 return filtered;
               }
               return [...filtered, poc];
@@ -165,6 +170,13 @@ export function useDerivTradingWs(accountId, { onContractUpdate } = {}) {
     [send],
   );
 
+  const refreshBalance = useCallback(() => {
+    const ws = wsRef.current;
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ balance: 1, req_id: reqIdRef.current++ }));
+    }
+  }, []);
+
   const buyContract = useCallback(
     async (proposalId, price) => {
       const result = await send({ buy: proposalId, price });
@@ -173,18 +185,21 @@ export function useDerivTradingWs(accountId, { onContractUpdate } = {}) {
         send({ portfolio: 1 }).catch(() => {});
         subscribeOpenContract(contractId).catch(() => {});
       }
+      // Immediate header balance update after stake leaves the account
+      refreshBalance();
       return result;
     },
-    [send, subscribeOpenContract],
+    [send, subscribeOpenContract, refreshBalance],
   );
 
   const sellContract = useCallback(
     async (contractId, price = 0) => {
       const result = await send({ sell: contractId, price });
       send({ portfolio: 1 }).catch(() => {});
+      refreshBalance();
       return result;
     },
-    [send],
+    [send, refreshBalance],
   );
 
   const updateContract = useCallback(
@@ -229,5 +244,6 @@ export function useDerivTradingWs(accountId, { onContractUpdate } = {}) {
     updateContract,
     subscribeOpenContract,
     queueBulkTrades,
+    refreshBalance,
   };
 }
