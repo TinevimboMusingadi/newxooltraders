@@ -4067,12 +4067,17 @@ button {
     font-size: 0.75rem;
   }
 
-  .account-balance {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    min-width: 0;
-  }
+.account-balance {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.account-balance.is-live {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
 
   .account-currency-flag {
     flex-shrink: 0;
