@@ -2,9 +2,18 @@ import { NavLink, Outlet, Navigate, useLocation } from 'react-router-dom';
 import {
   Bot,
   Clock,
+  Copy,
+  Gauge,
+  Hammer,
   LayoutDashboard,
+  LayoutGrid,
   LineChart,
   Radar,
+  Sparkles,
+  Sun,
+  User,
+  Workflow,
+  Zap,
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import AppSidebar from '../components/AppSidebar';
@@ -16,20 +25,50 @@ import { TradingWsProvider } from '../context/TradingWsContext';
 import { TradeSessionProvider } from '../context/TradeSessionContext';
 import { TradingFooterProvider } from '../context/TradingFooterContext';
 import { BotDeskProvider } from '../context/BotDeskContext';
-import { useAuth } from '../hooks/useAuth';
 
-const MOBILE_NAV = [
+/** Full app destinations — scroll left/right on mobile + desktop strip */
+const APP_SCROLL_NAV = [
   { to: '/dashboard', label: 'Home', icon: LayoutDashboard },
   { to: '/trade', label: 'Trade', icon: LineChart },
+  { to: '/markets', label: 'Markets', icon: LayoutGrid },
+  { to: '/chart', label: 'Chart', icon: Gauge },
+  { to: '/bulk', label: 'Bulk', icon: Zap },
   { to: '/history', label: 'History', icon: Clock },
-  { to: '/scanner', label: 'Analysis', icon: Radar },
   { to: '/bots', label: 'Hub', icon: Bot },
+  { to: '/bots/free', label: 'Free', icon: LayoutGrid },
+  { to: '/bots/run', label: 'Bot desk', icon: LineChart },
+  { to: '/scanner', label: 'Analysis', icon: Radar },
+  { to: '/bots/ai', label: 'Signals', icon: Sparkles },
+  { to: '/speedbot', label: 'Speedbot', icon: Sun },
+  { to: '/automated', label: 'Rules', icon: Workflow },
+  { to: '/builder', label: 'Builder', icon: Hammer },
+  { to: '/copy', label: 'Copy', icon: Copy },
+  { to: '/profile', label: 'Profile', icon: User },
 ];
 
 const SUMMARY_ROUTES = ['/bulk', '/scanner', '/bots', '/speedbot', '/automated', '/builder', '/dashboard'];
 
 const TRADE_ROUTES = ['/trade', '/chart'];
 const BOT_DESK_ROUTES = ['/bots/run'];
+
+function ScrollNav({ className, ariaLabel }) {
+  return (
+    <nav className={className} aria-label={ariaLabel}>
+      <div className="app-scroll-nav-track">
+        {APP_SCROLL_NAV.map(({ to, label, icon: Icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            className={({ isActive }) => `app-scroll-nav-link ${isActive ? 'active' : ''}`}
+          >
+            <Icon size={18} />
+            <span>{label}</span>
+          </NavLink>
+        ))}
+      </div>
+    </nav>
+  );
+}
 
 function AppShellContent() {
   const location = useLocation();
@@ -41,6 +80,7 @@ function AppShellContent() {
     <div className={`app-shell workspace-shell ${isTradeView ? 'app-shell--trade' : ''} ${isBotDesk ? 'app-shell--bot-desk' : ''}`}>
       <Navbar variant="app" compact={isTradeView} />
       <LiveTicker defaultOpen={!isTradeView && !isBotDesk} />
+      <ScrollNav className="app-scroll-nav app-scroll-nav--desktop" ariaLabel="App sections" />
       <div className="app-shell-body">
         <AppSidebar />
         <div className="app-content-wrap">
@@ -52,14 +92,7 @@ function AppShellContent() {
       </div>
       <TradingFooter />
       <BotLiveChip />
-      <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
-        {MOBILE_NAV.map(({ to, label, icon: Icon }) => (
-          <NavLink key={to} to={to} className={({ isActive }) => `mobile-nav-link ${isActive ? 'active' : ''}`}>
-            <Icon size={20} />
-            <span>{label}</span>
-          </NavLink>
-        ))}
-      </nav>
+      <ScrollNav className="app-scroll-nav app-scroll-nav--mobile" ariaLabel="Mobile navigation" />
     </div>
   );
 }
