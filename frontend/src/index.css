@@ -4104,7 +4104,8 @@ button {
     font-size: 0.72rem;
   }
 
-  .mobile-bottom-nav {
+  .mobile-bottom-nav,
+  .app-scroll-nav--mobile {
     bottom: calc(52px + env(safe-area-inset-bottom, 0px));
     z-index: 45;
   }
@@ -4112,7 +4113,7 @@ button {
   .app-main,
   .workspace-page,
   .app-main--trade {
-    padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px));
   }
 
   .app-shell-body {
