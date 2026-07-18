@@ -27,16 +27,18 @@ const MOBILE_NAV = [
 const SUMMARY_ROUTES = ['/bulk', '/scanner', '/bots', '/speedbot', '/automated', '/builder', '/dashboard'];
 
 const TRADE_ROUTES = ['/trade', '/chart'];
+const BOT_DESK_ROUTES = ['/bots/run'];
 
 function AppShellContent() {
   const location = useLocation();
-  const isTradeView = TRADE_ROUTES.some((p) => location.pathname.startsWith(p));
-  const showSummary = SUMMARY_ROUTES.some((p) => location.pathname.startsWith(p));
+  const isBotDesk = BOT_DESK_ROUTES.some((p) => location.pathname.startsWith(p));
+  const isTradeView = TRADE_ROUTES.some((p) => location.pathname.startsWith(p)) || isBotDesk;
+  const showSummary = !isBotDesk && SUMMARY_ROUTES.some((p) => location.pathname.startsWith(p));
 
   return (
-    <div className={`app-shell workspace-shell ${isTradeView ? 'app-shell--trade' : ''}`}>
+    <div className={`app-shell workspace-shell ${isTradeView ? 'app-shell--trade' : ''} ${isBotDesk ? 'app-shell--bot-desk' : ''}`}>
       <Navbar variant="app" compact={isTradeView} />
-      <LiveTicker defaultOpen={!isTradeView} />
+      <LiveTicker defaultOpen={!isTradeView && !isBotDesk} />
       <div className="app-shell-body">
         <AppSidebar />
         <div className="app-content-wrap">
