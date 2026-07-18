@@ -11,6 +11,7 @@ import WorkspacePageHeader from '../components/WorkspacePageHeader';
 import BotTradeChat from '../components/BotTradeChat';
 import { DIGIT_MATCH_V25_PRESET } from '../lib/strategyRunner';
 import { persistBotRun } from '../lib/botRunSession';
+import { useBotDesk } from '../context/BotDeskContext';
 
 const DEFAULT_PARAMS = {
   symbol: 'R_25',
@@ -49,6 +50,7 @@ export default function Builder() {
   const [mobileTab, setMobileTab] = useState('params');
   const { selectedSymbol, selectSymbol } = useMarket();
   const { setRunHandler, clearRunHandler } = useTradingFooter();
+  const { loadBot } = useBotDesk();
   const { user } = useAuth();
   const navigate = useNavigate();
   const account = user?.accounts?.find((a) => a.accountId === user?.selectedAccountId);
@@ -148,8 +150,9 @@ export default function Builder() {
       presetId: 'builder',
     };
     persistBotRun(payload);
+    loadBot(payload);
     navigate('/bots/run', { state: payload });
-  }, [params, name, navigate, selectSymbol]);
+  }, [params, name, navigate, selectSymbol, loadBot]);
 
   useEffect(() => {
     setRunHandler(openBotView, 'Open Bot View');
