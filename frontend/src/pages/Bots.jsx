@@ -30,6 +30,7 @@ import { api } from '../lib/api';
 import WorkspacePageHeader from '../components/WorkspacePageHeader';
 import BotTradeChat, { pushChatMessage } from '../components/BotTradeChat';
 import { persistBotRun } from '../lib/botRunSession';
+import { useBotDesk } from '../context/BotDeskContext';
 
 const HUB_LINKS = [
   { to: '/scanner', label: 'Analysis Lab', icon: Radar, desc: 'Live digit boards & probability' },
@@ -46,6 +47,7 @@ export default function Bots() {
   const { user } = useAuth();
   const { selectedSymbol, selectSymbol } = useMarket();
   const navigate = useNavigate();
+  const { loadBot } = useBotDesk();
   const accountId = user?.selectedAccountId;
   const selectedAccount = user?.accounts?.find((a) => a.accountId === accountId);
   const { connected, getProposal, buyContract, error } = useTradingWs();
@@ -183,6 +185,7 @@ export default function Bots() {
     };
     if (payload.config.symbol) selectSymbol(payload.config.symbol);
     persistBotRun(payload);
+    loadBot(payload);
     navigate('/bots/run', { state: payload });
   };
 
@@ -237,11 +240,11 @@ export default function Bots() {
       </div>
 
       <div className="apex-actions-row">
-        <button type="button" className="btn btn-primary apex-start-btn" disabled={!connected} onClick={running ? stop : start}>
-          {running ? <><Square size={16} /> STOP BOT</> : <><Play size={16} /> START BOT</>}
+        <button type="button" className="btn btn-primary btn-sm apex-ctrl-btn" disabled={!connected} onClick={running ? stop : start}>
+          {running ? <><Square size={14} /> Stop</> : <><Play size={14} /> Start bot</>}
         </button>
-        <button type="button" className="btn btn-secondary apex-start-btn" onClick={openBotTradingView}>
-          <LineChart size={16} /> Open Bot Trading View
+        <button type="button" className="btn btn-secondary btn-sm apex-ctrl-btn" onClick={openBotTradingView}>
+          <LineChart size={14} /> Open bot view
         </button>
       </div>
 
