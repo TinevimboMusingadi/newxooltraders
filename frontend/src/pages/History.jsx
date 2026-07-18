@@ -47,7 +47,9 @@ export default function History() {
     <div className="history-page">
       <div className="page-header-block">
         <h1 className="heading-lg">Trade History</h1>
-        <p className="text-secondary">Past trades, profit/loss, and account statement — saved locally and from Deriv.</p>
+        <p className="text-secondary">
+          Closed trades, account statement, and app-saved bot/manual trades. On phones use the History tab in the bottom bar.
+        </p>
       </div>
 
       <div className="history-summary">
