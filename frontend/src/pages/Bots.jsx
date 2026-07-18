@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   Play,
   Square,
   Save,
   Trash2,
-  RefreshCw,
   Radar,
   Sparkles,
   LayoutGrid,
@@ -14,13 +13,14 @@ import {
   Hammer,
   Copy,
   Sun,
+  LineChart,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useMarket } from '../context/MarketContext';
 import { useTradingWs } from '../context/TradingWsContext';
 import { useTradeSession } from '../context/TradeSessionContext';
 import { useTradingFooter } from '../context/TradingFooterContext';
-import { createStrategyRunner, BOT_PRESETS, computeSwingLevels } from '../lib/strategyRunner';
+import { createStrategyRunner, BOT_PRESETS, DIGIT_MATCH_V25_PRESET, computeSwingLevels } from '../lib/strategyRunner';
 import { DEFAULT_DURATION } from '../lib/tradeDurations';
 import { useBotConfigs, useSaveBotConfig, useDeleteBotConfig } from '../hooks/queries';
 import { useActiveSymbols, useRealtimePrices } from '../hooks/useActiveSymbols';
@@ -28,10 +28,13 @@ import { useDigitStream } from '../hooks/useDigitStream';
 import { filterVolatilitySymbols } from '../lib/symbolGroups';
 import { api } from '../lib/api';
 import WorkspacePageHeader from '../components/WorkspacePageHeader';
+import BotTradeChat, { pushChatMessage } from '../components/BotTradeChat';
+import { persistBotRun } from '../lib/botRunSession';
 
 const HUB_LINKS = [
   { to: '/scanner', label: 'Analysis Lab', icon: Radar, desc: 'Live digit boards & probability' },
-  { to: '/bots/free', label: 'Free Strategies', icon: LayoutGrid, desc: 'Signal-driven presets' },
+  { to: '/bots/free', label: 'Free Strategies', icon: LayoutGrid, desc: 'Exact Deriv + signal presets' },
+  { to: '/bots/run', label: 'Bot Trading View', icon: LineChart, desc: 'Chart, positions & trade chat' },
   { to: '/bots/ai', label: 'Signal Lab', icon: Sparkles, desc: 'Ranked live signals' },
   { to: '/speedbot', label: 'Speedbot', icon: Sun, desc: 'Fast even/odd parity' },
   { to: '/automated', label: 'Rules', icon: Workflow, desc: 'Threshold automation' },
@@ -41,7 +44,8 @@ const HUB_LINKS = [
 
 export default function Bots() {
   const { user } = useAuth();
-  const { selectedSymbol } = useMarket();
+  const { selectedSymbol, selectSymbol } = useMarket();
+  const navigate = useNavigate();
   const accountId = user?.selectedAccountId;
   const selectedAccount = user?.accounts?.find((a) => a.accountId === accountId);
   const { connected, getProposal, buyContract, error } = useTradingWs();
@@ -50,9 +54,9 @@ export default function Bots() {
   const { symbols } = useActiveSymbols();
   const digitStream = useDigitStream(selectedSymbol);
 
-  const [config, setConfig] = useState({ ...BOT_PRESETS[1].config, intervalMode: false });
+  const [config, setConfig] = useState({ ...BOT_PRESETS.find((p) => p.id === 'apex-martingale')?.config, intervalMode: false });
   const [name, setName] = useState('Apex Bot');
-  const [logs, setLogs] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [stats, setStats] = useState({ wins: 0, losses: 0, pl: 0, trades: 0 });
   const [running, setRunning] = useState(false);
   const [lastTick, setLastTick] = useState(null);
@@ -97,7 +101,7 @@ export default function Bots() {
           currency: selectedAccount?.currency || 'USD',
         }),
       onBuy: buyContract,
-      onLog: (entry) => setLogs((prev) => [entry, ...prev].slice(0, 100)),
+      onLog: (entry) => pushChatMessage(setMessages, entry.msg, 'bot'),
     });
   }, [getProposal, buyContract, selectedSymbol, selectedAccount, config]);
 
@@ -161,6 +165,27 @@ export default function Bots() {
     setName(preset.name);
   };
 
+  const openBotTradingView = () => {
+    const exact = name === DIGIT_MATCH_V25_PRESET.name || config.tradeKind === 'digit_match_differ';
+    const payload = {
+      name,
+      config: exact
+        ? { ...DIGIT_MATCH_V25_PRESET.config, ...config, symbol: config.symbol || selectedSymbol }
+        : {
+            ...config,
+            symbol: selectedSymbol,
+            winAmount: config.baseStake,
+            martingale: config.multiplier,
+            marketLabel: selectedSymbol,
+            tradeTypeLabel: config.contractType || 'Rise/Fall',
+          },
+      presetId: exact ? DIGIT_MATCH_V25_PRESET.id : 'apex',
+    };
+    if (payload.config.symbol) selectSymbol(payload.config.symbol);
+    persistBotRun(payload);
+    navigate('/bots/run', { state: payload });
+  };
+
   const loadSaved = (saved) => {
     setConfig(typeof saved.config === 'string' ? JSON.parse(saved.config) : saved.config);
     setName(saved.name);
@@ -211,9 +236,14 @@ export default function Bots() {
         <div className="card apex-stat"><span>Win Rate</span><strong>{winRate}%</strong></div>
       </div>
 
-      <button type="button" className="btn btn-primary apex-start-btn" disabled={!connected} onClick={running ? stop : start}>
-        {running ? <><Square size={16} /> STOP BOT</> : <><Play size={16} /> START BOT</>}
-      </button>
+      <div className="apex-actions-row">
+        <button type="button" className="btn btn-primary apex-start-btn" disabled={!connected} onClick={running ? stop : start}>
+          {running ? <><Square size={16} /> STOP BOT</> : <><Play size={16} /> START BOT</>}
+        </button>
+        <button type="button" className="btn btn-secondary apex-start-btn" onClick={openBotTradingView}>
+          <LineChart size={16} /> Open Bot Trading View
+        </button>
+      </div>
 
       {error && <div className="auth-error-banner bot-error-banner">Last Error: {error}</div>}
 
@@ -317,28 +347,12 @@ export default function Bots() {
         </div>
       </div>
 
-      <div className="card bot-log">
-        <div className="bot-log-header">
-          <h3 className="heading-md">Trade History</h3>
-          {logs.length > 0 && (
-            <button type="button" className="btn-ghost btn-xs" onClick={() => setLogs([])}>
-              <RefreshCw size={12} /> Clear
-            </button>
-          )}
-        </div>
-        {logs.length === 0 ? (
-          <p className="text-muted">Trades will appear here after the bot buys a contract.</p>
-        ) : (
-          <ul className="bot-log-list">
-            {logs.map((l, i) => (
-              <li key={i} className="bot-log-entry">
-                <span className="mono text-muted">{new Date(l.ts).toLocaleTimeString()}</span>
-                <span>{l.msg}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <BotTradeChat
+        running={running}
+        messages={messages}
+        onClear={() => setMessages([])}
+        className="hub-bot-chat"
+      />
     </div>
   );
 }
