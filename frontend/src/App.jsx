@@ -20,6 +20,7 @@ const Scanner = lazy(() => import('./pages/Scanner'));
 const BulkTrader = lazy(() => import('./pages/BulkTrader'));
 const Bots = lazy(() => import('./pages/Bots'));
 const FreeBots = lazy(() => import('./pages/FreeBots'));
+const BotTradingView = lazy(() => import('./pages/BotTradingView'));
 const AiBots = lazy(() => import('./pages/AiBots'));
 const Speedbot = lazy(() => import('./pages/Speedbot'));
 const Automated = lazy(() => import('./pages/Automated'));
@@ -59,6 +60,7 @@ export default function App() {
                   <Route path="/bulk" element={<Suspense fallback={<PageLoader />}><BulkTrader /></Suspense>} />
                   <Route path="/bots" element={<Suspense fallback={<PageLoader />}><Bots /></Suspense>} />
                   <Route path="/bots/free" element={<Suspense fallback={<PageLoader />}><FreeBots /></Suspense>} />
+                  <Route path="/bots/run" element={<Suspense fallback={<PageLoader />}><BotTradingView /></Suspense>} />
                   <Route path="/bots/ai" element={<Suspense fallback={<PageLoader />}><AiBots /></Suspense>} />
                   <Route path="/speedbot" element={<Suspense fallback={<PageLoader />}><Speedbot /></Suspense>} />
                   <Route path="/automated" element={<Suspense fallback={<PageLoader />}><Automated /></Suspense>} />
