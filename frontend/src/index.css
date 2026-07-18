@@ -4775,3 +4775,450 @@ button {
   }
 }
 
+
+/* === Bot Trade Chat + Bot Trading View + Builder mobile === */
+.bot-trade-chat {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--workspace-panel, rgba(0, 0, 0, 0.25));
+  min-height: 280px;
+  max-height: 480px;
+  overflow: hidden;
+}
+
+.bot-trade-chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.bot-trade-chat-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bot-run-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+}
+
+.bot-run-badge.is-running {
+  color: #16a34a;
+  border-color: rgba(34, 197, 94, 0.45);
+  background: rgba(34, 197, 94, 0.12);
+}
+
+.bot-run-badge.is-idle {
+  color: var(--text-muted);
+}
+
+.bot-trade-chat-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.bot-trade-chat-empty {
+  margin: 12px 0;
+  font-size: 0.85rem;
+}
+
+.bot-trade-chat-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bot-chat-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-size: 0.82rem;
+  background: rgba(157, 108, 255, 0.08);
+}
+
+.bot-chat-msg.role-system {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+}
+
+.bot-chat-msg.role-trade {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.2);
+}
+
+.bot-chat-msg.role-error {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.bot-chat-time {
+  font-size: 0.65rem;
+}
+
+.bot-chat-anchor {
+  height: 1px;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.bot-params-panel {
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle);
+}
+
+.bot-params-panel h3,
+.bot-params-panel h4 {
+  margin: 0 0 10px;
+}
+
+.bot-params-list {
+  margin: 0 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bot-params-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 8px;
+  font-size: 0.78rem;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.bot-params-row dt {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.bot-params-row dd {
+  margin: 0;
+  text-align: right;
+  word-break: break-word;
+}
+
+.bot-exact-card {
+  border: 1px solid rgba(157, 108, 255, 0.35);
+}
+
+.bot-params-panel--inline {
+  margin: 12px 0;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.bots-gallery-grid--featured {
+  grid-template-columns: 1fr;
+  max-width: 560px;
+}
+
+.bot-trading-view {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 10px 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.bot-desk-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 4px;
+}
+
+.bot-desk-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.bot-desk-title {
+  margin: 0;
+}
+
+.bot-desk-sub {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+}
+
+.bot-desk-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bot-desk-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 12px;
+  align-items: start;
+}
+
+.bot-desk-main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.bot-desk-chart {
+  padding: 0;
+  overflow: hidden;
+  min-height: 260px;
+  height: min(38vh, 320px);
+}
+
+.bot-desk-chart .trader-line-chart,
+.bot-desk-chart .trader-chart-stage {
+  min-height: 240px;
+  height: 100%;
+}
+
+.bot-desk-side {
+  position: sticky;
+  top: 60px;
+  min-width: 0;
+}
+
+.bot-desk-side .bot-trade-chat {
+  max-height: calc(100vh - 140px);
+  min-height: 360px;
+}
+
+.apex-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.apex-actions-row .apex-start-btn {
+  flex: 1;
+  min-width: 160px;
+}
+
+.hub-bot-chat {
+  margin-top: 12px;
+  max-height: 360px;
+}
+
+.builder-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr) 300px;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.builder-params-pane,
+.builder-chat-pane {
+  min-width: 0;
+}
+
+.builder-param-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.builder-param-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.builder-check {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px !important;
+  color: var(--text-primary) !important;
+}
+
+.builder-chat-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.builder-chat-hint {
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.builder-mobile-tabs {
+  display: none;
+}
+
+.builder-account {
+  font-size: 0.75rem;
+  margin-left: auto;
+}
+
+.app-shell--bot-desk .app-ticker {
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  .builder-layout {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .builder-chat-pane {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .bot-desk-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bot-desk-side {
+    position: static;
+  }
+
+  .bot-desk-side .bot-trade-chat {
+    max-height: 42vh;
+    min-height: 220px;
+  }
+
+  .bot-desk-chart {
+    height: min(32vh, 240px);
+    min-height: 180px;
+  }
+
+  .bot-trading-view {
+    padding: 6px 8px calc(100px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .bot-desk-header {
+    position: sticky;
+    top: 52px;
+    z-index: 20;
+    background: var(--workspace-surface);
+    padding: 8px 4px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .bot-params-row {
+    grid-template-columns: 1fr;
+    text-align: left;
+  }
+
+  .bot-params-row dd {
+    text-align: left;
+    font-weight: 600;
+  }
+
+  .builder-mobile-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    margin-bottom: 8px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  .builder-tab {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 8px 6px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  .builder-tab.active {
+    background: rgba(157, 108, 255, 0.2);
+    color: var(--text-primary);
+  }
+
+  .builder-layout {
+    display: block;
+  }
+
+  .builder-params-pane,
+  .builder-workspace,
+  .builder-chat-pane {
+    display: none;
+  }
+
+  .builder-params-pane.is-mobile-active,
+  .builder-workspace.is-mobile-active,
+  .builder-chat-pane.is-mobile-active {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .builder-workspace.is-mobile-active {
+    display: block;
+  }
+
+  .blockly-mount {
+    min-height: 320px !important;
+  }
+
+  .bots-gallery-page {
+    padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .bot-gallery-actions {
+    flex-wrap: wrap;
+  }
+
+  .app-shell--bot-desk .app-main--trade {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Phase 1 polish: calmer Trade mobile */
+  .trade-page-root .trade-chart-chrome {
+    min-height: 28px;
+  }
+
+  .trade-panel-compact .heading-md {
+    font-size: 1rem;
+  }
+
+  .trade-panel-compact .preset-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .trade-panel-compact .preset-row::-webkit-scrollbar {
+    display: none;
+  }
+}
