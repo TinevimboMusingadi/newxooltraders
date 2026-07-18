@@ -4,6 +4,7 @@ import { BOT_PRESETS, DIGIT_MATCH_V25_PRESET } from '../lib/strategyRunner';
 import { STRATEGY_PACKS } from '../lib/tickAnalysisEngine';
 import { useSaveBotConfig } from '../hooks/queries';
 import { useMarket } from '../context/MarketContext';
+import { useBotDesk } from '../context/BotDeskContext';
 import { toast } from 'sonner';
 import WorkspacePageHeader from '../components/WorkspacePageHeader';
 import { persistBotRun } from '../lib/botRunSession';
@@ -44,11 +45,11 @@ function ExactParamCard({ preset, onStart, onLoad }) {
         </dl>
       </div>
       <div className="bot-gallery-actions">
-        <button type="button" className="btn btn-primary btn-sm" onClick={onStart}>
-          <Play size={14} /> Start in Bot View
+        <button type="button" className="btn btn-primary btn-xs bot-action-btn" onClick={onStart}>
+          <Play size={12} /> Open bot view
         </button>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={onLoad}>Load preset</button>
-        <Link to="/bots" className="btn btn-ghost btn-sm">Open Hub</Link>
+        <button type="button" className="btn btn-ghost btn-xs bot-action-btn" onClick={onLoad}>Load</button>
+        <Link to="/bots" className="btn btn-ghost btn-xs bot-action-btn">Hub</Link>
       </div>
     </div>
   );
@@ -56,6 +57,7 @@ function ExactParamCard({ preset, onStart, onLoad }) {
 
 export default function FreeBots() {
   const { selectedSymbol, selectSymbol } = useMarket();
+  const { loadBot } = useBotDesk();
   const saveMutation = useSaveBotConfig();
   const navigate = useNavigate();
 
@@ -79,6 +81,7 @@ export default function FreeBots() {
       presetId: preset.id,
     };
     persistBotRun(payload);
+    loadBot(payload);
     navigate('/bots/run', { state: payload });
   };
 
@@ -113,11 +116,11 @@ export default function FreeBots() {
                 <h3>{p.name}</h3>
                 <p className="text-muted">{p.description || `Stake $${p.config.baseStake} · TP $${p.config.takeProfit} · SL $${p.config.stopLoss}`}</p>
                 <div className="bot-gallery-actions">
-                  <button type="button" className="btn btn-primary btn-sm" onClick={() => startInBotView(p)}>
-                    <Play size={14} /> Start in Bot View
+                  <button type="button" className="btn btn-primary btn-xs bot-action-btn" onClick={() => startInBotView(p)}>
+                    <Play size={12} /> Open bot view
                   </button>
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => load(p)}>Load preset</button>
-                  <Link to="/bots" className="btn btn-ghost btn-sm">Open Hub</Link>
+                  <button type="button" className="btn btn-ghost btn-xs bot-action-btn" onClick={() => load(p)}>Load</button>
+                  <Link to="/bots" className="btn btn-ghost btn-xs bot-action-btn">Hub</Link>
                 </div>
               </div>
             ))}
