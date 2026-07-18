@@ -5222,3 +5222,117 @@ button {
     display: none;
   }
 }
+
+/* Bot live chip + smaller bot actions + history mobile */
+.bot-live-chip {
+  position: fixed;
+  left: 12px;
+  bottom: calc(108px + env(safe-area-inset-bottom, 0px));
+  z-index: 55;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(34, 197, 94, 0.45);
+  background: rgba(20, 18, 32, 0.92);
+  color: #86efac;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+}
+
+[data-theme='light'] .bot-live-chip {
+  background: rgba(255, 255, 255, 0.95);
+  color: #15803d;
+}
+
+.bot-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: bot-live-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes bot-live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.85); }
+}
+
+.bot-desk-persist-hint {
+  margin: 0 4px 4px;
+  font-size: 0.72rem;
+}
+
+.bot-params-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.apex-ctrl-btn,
+.bot-action-btn,
+.bot-desk-ctrl-btn {
+  width: auto !important;
+  min-width: 0;
+  padding: 6px 12px !important;
+  font-size: 0.78rem !important;
+  margin: 0 !important;
+}
+
+.apex-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  align-items: center;
+}
+
+.apex-actions-row .apex-ctrl-btn {
+  flex: 0 1 auto;
+}
+
+.bot-gallery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .apex-start-btn {
+    width: auto;
+    padding: 8px 12px;
+    font-size: 0.78rem;
+  }
+
+  .history-page {
+    padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .history-page .page-header-block .heading-lg {
+    font-size: 1.25rem;
+  }
+
+  .history-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .history-summary .summary-card {
+    padding: 10px 8px;
+  }
+
+  .bot-live-chip {
+    bottom: calc(118px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .bot-desk-actions .bot-desk-ctrl-btn {
+    padding: 5px 10px !important;
+    font-size: 0.72rem !important;
+  }
+}
